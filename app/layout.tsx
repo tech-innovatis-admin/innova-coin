@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat } from "next/font/google";
+
+import MiniFooter from "./_components/mini-footer";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -23,11 +21,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
+      <body className="h-full overflow-hidden bg-white text-slate-950">
+        <div className="relative isolate flex h-screen flex-col overflow-hidden bg-white text-slate-950">
+          <div className="relative z-10 flex h-screen flex-col">
+            {children}
+            <MiniFooter />
+          </div>
+        </div>
+      </body>
     </html>
   );
 }
