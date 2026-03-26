@@ -3,12 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import {
-  getUserDashboardData,
-  mockHeads,
-  mockUser,
-  type MockUser,
-} from "@/lib/mock-data";
+import { type MockUser } from "@/lib/mock-data";
 import AppHeader from "./app-header";
 import CountdownCard from "./countdown-card";
 import StatementCard from "./statement-card";
@@ -116,8 +111,12 @@ function SavingsPig({ availableAt }: { availableAt: string }) {
   );
 }
 
-export default function DashboardContent() {
-  const [user] = useState<MockUser>(() => getUserDashboardData(mockUser, mockHeads));
+type DashboardContentProps = {
+  initialUser: MockUser;
+};
+
+export default function DashboardContent({ initialUser }: DashboardContentProps) {
+  const [user] = useState<MockUser>(initialUser);
 
   return (
     <>

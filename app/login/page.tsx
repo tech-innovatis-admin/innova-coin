@@ -1,6 +1,8 @@
 import AppHeader from "../_components/app-header";
 import LoginForm from "../_components/login-form";
 import ParticlesBackground from "../_components/particles-background";
+import { getSessionUser, isAdminRole } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Innova Coins",
@@ -8,7 +10,13 @@ export const metadata = {
 };
 
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const sessionUser = await getSessionUser();
+
+  if (sessionUser) {
+    redirect(isAdminRole(sessionUser.role) ? "/admin" : "/dashboard");
+  }
+
   return (
     <>
       <AppHeader />

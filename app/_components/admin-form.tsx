@@ -6,7 +6,11 @@ import {
   formatCurrencyBRL,
   getRemainingTime,
 } from "@/lib/formatters";
-import type { HeadAccount, WithdrawStatus } from "@/lib/mock-data";
+import type {
+  HeadAccount,
+  InstallmentEntry,
+  WithdrawStatus,
+} from "@/lib/mock-data";
 import UserAvatar from "./user-avatar";
 
 type AdminFormProps = {
@@ -20,6 +24,7 @@ type DraftHead = {
   email: string;
   photoUrl: string | null;
   pendingBalance: number;
+  installments: InstallmentEntry[];
   newInstallment: string;
   availableAt: string;
   status: WithdrawStatus;
@@ -68,6 +73,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
       email: "",
       photoUrl: null,
       pendingBalance: 0,
+      installments: [],
       newInstallment: "",
       availableAt: getDefaultAvailableAt(),
       status: "pending",

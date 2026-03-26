@@ -1,19 +1,22 @@
 import AppHeader from "../_components/app-header";
 import AdminForm from "../_components/admin-form";
 import { mockAdmin, mockHeads } from "@/lib/mock-data";
+import { requireAdminUser } from "@/lib/auth";
 
 export const metadata = {
   title: "Painel Administrativo",
   description: "",
 };
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const sessionUser = await requireAdminUser();
+
   return (
     <>
       <AppHeader
         profileMode="admin"
-        userName={mockAdmin.name}
-        userPhoto={mockAdmin.photoUrl}
+        userName={sessionUser.name || sessionUser.username || mockAdmin.name}
+        userPhoto={sessionUser.photo}
       />
       <main className="flex flex-1 overflow-y-auto overflow-x-hidden px-6 pt-20 pb-8">
         <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6">

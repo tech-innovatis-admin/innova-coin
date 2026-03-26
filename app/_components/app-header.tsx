@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { logoutAction } from "@/app/login/actions";
 import UserAvatar from "./user-avatar";
 
 type AppHeaderProps = {
@@ -77,12 +78,14 @@ export default function AppHeader({
                 photoUrl={userPhoto}
                 size="sm"
               />
-              <Link
-                href="/login"
-                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Sair
-              </Link>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Sair
+                </button>
+              </form>
             </>
           ) : null}
 
@@ -93,12 +96,14 @@ export default function AppHeader({
                 photoUrl={userPhoto}
                 size="sm"
               />
-              <Link
-                href="/login"
-                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Sair
-              </Link>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Sair
+                </button>
+              </form>
             </>
           ) : null}
         </div>

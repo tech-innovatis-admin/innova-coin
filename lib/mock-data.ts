@@ -181,6 +181,7 @@ export function getUserDashboardData(user: MockUser, heads: HeadAccount[]) {
     photoUrl: matchedHead.photoUrl,
     pendingBalance: matchedHead.pendingBalance,
     lastInstallment: matchedHead.lastInstallment,
+    installments: matchedHead.installments,
     availableAt: matchedHead.availableAt,
     status: matchedHead.status,
   };
