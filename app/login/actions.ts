@@ -6,8 +6,8 @@ import {
   authenticateUser,
   createSession,
   deleteSession,
-  isAdminRole,
 } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/platform-access";
 
 export type LoginActionState = {
   error?: string;
@@ -34,9 +34,17 @@ export async function loginAction(
     } satisfies LoginActionState;
   }
 
+  const postLoginPath = getPostLoginPath(user.id);
+
+  if (!postLoginPath) {
+    return {
+      error: "Usuario sem acesso a esta plataforma.",
+    } satisfies LoginActionState;
+  }
+
   await createSession(user);
 
-  redirect(isAdminRole(user.role) ? "/admin" : "/dashboard");
+  redirect(postLoginPath);
 }
 
 export async function logoutAction() {

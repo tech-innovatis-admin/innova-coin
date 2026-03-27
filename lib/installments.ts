@@ -1,5 +1,5 @@
 import { getDbPool } from "@/lib/db";
-import type { InstallmentEntry } from "@/lib/mock-data";
+import { mapInstallmentDate, type InstallmentEntry } from "@/lib/heads";
 
 type InstallmentRow = {
   id: string | number;
@@ -50,13 +50,42 @@ export async function getInstallmentsByUserId(userId: string) {
   return result.rows;
 }
 
+export async function updateInstallmentById(input: {
+  installmentId: string;
+  amount: number;
+  depositDate: string;
+}) {
+  const pool = getDbPool();
+
+  await pool.query(
+    `
+      update public.parcelas_bonus
+      set
+        valor_depositado = $2::numeric,
+        data_deposito = $3::date,
+        atualizado_em = now()
+      where id = $1::bigint
+    `,
+    [input.installmentId, input.amount, input.depositDate],
+  );
+}
+
+export async function deleteInstallmentById(installmentId: string) {
+  const pool = getDbPool();
+
+  await pool.query(
+    `
+      delete from public.parcelas_bonus
+      where id = $1::bigint
+    `,
+    [installmentId],
+  );
+}
+
 export function mapInstallments(rows: InstallmentRow[]): InstallmentEntry[] {
   return rows.map((row) => ({
     id: String(row.id),
     amount: Number(row.valor_depositado),
-    addedAt:
-      row.data_deposito instanceof Date
-        ? row.data_deposito.toISOString()
-        : new Date(row.data_deposito).toISOString(),
+    addedAt: mapInstallmentDate(row.data_deposito),
   }));
 }

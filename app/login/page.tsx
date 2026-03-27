@@ -1,11 +1,12 @@
 import AppHeader from "../_components/app-header";
 import LoginForm from "../_components/login-form";
 import ParticlesBackground from "../_components/particles-background";
-import { getSessionUser, isAdminRole } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/platform-access";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Innova Coins",
+  title: "Innova Coin",
   description: "",
 };
 
@@ -14,13 +15,17 @@ export default async function LoginPage() {
   const sessionUser = await getSessionUser();
 
   if (sessionUser) {
-    redirect(isAdminRole(sessionUser.role) ? "/admin" : "/dashboard");
+    const postLoginPath = getPostLoginPath(sessionUser.id);
+
+    if (postLoginPath) {
+      redirect(postLoginPath);
+    }
   }
 
   return (
     <>
-      <AppHeader />
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 pt-23 pb-6">
+      <AppHeader centerBrand />
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-4 pt-20 pb-3 sm:px-6 sm:pt-23 sm:pb-6">
         <div className="absolute inset-0 z-0 bg-[#121826]" />
         <ParticlesBackground />
         <div className="relative z-10">

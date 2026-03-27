@@ -4,10 +4,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDbPool } from "@/lib/db";
+import { isPlatformAdminId, isPlatformHeadId } from "@/lib/platform-access";
 
 const SESSION_COOKIE_NAME = "innova_session";
 const SESSION_DURATION = "7d";
-const ADMIN_ROLES = new Set(["admin", "gestor"]);
 
 type UserRow = {
   id: string | number;
@@ -53,7 +53,15 @@ async function decryptSession(token: string) {
 }
 
 export function isAdminRole(role: string) {
-  return ADMIN_ROLES.has(role);
+  return role === "admin" || role === "gestor";
+}
+
+export function isPlatformAdminUser(user: Pick<SessionUser, "id">) {
+  return isPlatformAdminId(user.id);
+}
+
+export function isPlatformHeadUser(user: Pick<SessionUser, "id">) {
+  return isPlatformHeadId(user.id);
 }
 
 export async function authenticateUser(identifier: string, password: string) {
@@ -144,8 +152,18 @@ export async function requireAuthenticatedUser() {
 export async function requireAdminUser() {
   const user = await requireAuthenticatedUser();
 
-  if (!isAdminRole(user.role)) {
+  if (!isPlatformAdminUser(user)) {
     redirect("/dashboard");
+  }
+
+  return user;
+}
+
+export async function requireHeadUser() {
+  const user = await requireAuthenticatedUser();
+
+  if (!isPlatformHeadUser(user)) {
+    redirect("/login");
   }
 
   return user;

@@ -1,6 +1,6 @@
 import AppHeader from "../_components/app-header";
 import AdminForm from "../_components/admin-form";
-import { mockAdmin, mockHeads } from "@/lib/mock-data";
+import { getHeadSummaries } from "@/lib/heads";
 import { requireAdminUser } from "@/lib/auth";
 
 export const metadata = {
@@ -10,12 +10,13 @@ export const metadata = {
 
 export default async function AdminPage() {
   const sessionUser = await requireAdminUser();
+  const heads = await getHeadSummaries();
 
   return (
     <>
       <AppHeader
         profileMode="admin"
-        userName={sessionUser.name || sessionUser.username || mockAdmin.name}
+        userName={sessionUser.name || sessionUser.username || "Equipe Financeira"}
         userPhoto={sessionUser.photo}
       />
       <main className="flex flex-1 overflow-y-auto overflow-x-hidden px-6 pt-20 pb-8">
@@ -26,7 +27,7 @@ export default async function AdminPage() {
             </h1>
           </div>
 
-          <AdminForm heads={mockHeads} />
+          <AdminForm heads={heads} />
         </section>
       </main>
     </>

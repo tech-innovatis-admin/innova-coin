@@ -12,30 +12,30 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <section className="w-full max-w-xs rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-      <div className="mb-2 flex flex-col items-center space-y-1 text-center">
+    <section className="w-full max-w-sm rounded-[1.7rem] border border-white/10 bg-slate-950/55 px-5 py-6 shadow-2xl shadow-cyan-950/20 backdrop-blur sm:rounded-[2rem] sm:px-8 sm:py-9">
+      <div className="mb-4 flex flex-col items-center space-y-2 text-center">
         <Image
           src="/logo_innovatis_oficial.svg"
           alt="Logo"
-          width={64}
-          height={64}
+          width={60}
+          height={60}
+          className="sm:h-[72px] sm:w-[72px]"
         />
-        <h1 className="text-3xl font-semibold tracking-tight text-white">
-          Bem vindo
+        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          Bem-vindo
         </h1>
-        <p className="text-sm leading-6 text-slate-300">
-          Acesso com a conta real do admin console
-        </p>
       </div>
 
-      <form action={formAction} className="space-y-3">
+      <form action={formAction} className="space-y-3.5 sm:space-y-4">
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-slate-200">Usuario ou e-mail</span>
+          <span className="text-sm font-medium text-slate-200">
+            Usuario ou e-mail
+          </span>
           <input
             type="text"
             name="identifier"
             placeholder="Digite seu usuario ou e-mail"
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300/50"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300/50 sm:py-3.5"
           />
         </label>
 
@@ -45,13 +45,13 @@ export default function LoginForm() {
             <input
               type={showPassword ? "text" : "password"}
               name="password"
-              placeholder="••••••••"
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300/50"
+              placeholder="*************"
+              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300/50 sm:py-3.5"
             />
             <button
               type="button"
               onClick={() => setShowPassword((current) => !current)}
-              className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/8 hover:text-white"
+              className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/8 hover:text-white"
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               aria-pressed={showPassword}
             >
@@ -99,7 +99,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-2xl bg-cyan-300 px-4 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-2xl bg-cyan-300 px-4 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70 sm:py-3.5"
         >
           {pending ? "Entrando..." : "Entrar"}
         </button>

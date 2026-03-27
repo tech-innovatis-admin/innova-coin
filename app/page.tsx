@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSessionUser, isAdminRole } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
+import { getPostLoginPath } from "@/lib/platform-access";
 
 export default async function Home() {
   const sessionUser = await getSessionUser();
@@ -8,5 +9,7 @@ export default async function Home() {
     redirect("/login");
   }
 
-  redirect(isAdminRole(sessionUser.role) ? "/admin" : "/dashboard");
+  const postLoginPath = getPostLoginPath(sessionUser.id);
+
+  redirect(postLoginPath ?? "/login");
 }

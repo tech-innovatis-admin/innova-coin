@@ -22,9 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
-      <body className="h-full overflow-hidden bg-white text-slate-950">
-        <div className="relative isolate flex h-screen flex-col overflow-hidden bg-white text-slate-950">
-          <div className="relative z-10 flex h-screen flex-col">
+      <body className="min-h-screen bg-white text-slate-950">
+        <div className="relative isolate flex min-h-screen flex-col bg-white text-slate-950">
+          <div className="relative z-10 flex min-h-screen flex-col">
             {children}
             <MiniFooter />
           </div>

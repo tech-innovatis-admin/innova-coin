@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
-import type { InstallmentEntry } from "@/lib/mock-data";
+import type { InstallmentEntry } from "@/lib/heads";
 
 type StatementCardProps = {
   installments: InstallmentEntry[];
@@ -48,43 +48,49 @@ export default function StatementCard({ installments }: StatementCardProps) {
   );
 
   return (
-    <article className="relative min-h-0 overflow-hidden rounded-[2rem] border border-[#d7e6ff]/38 bg-[linear-gradient(145deg,rgba(244,248,255,0.72),rgba(202,215,238,0.42))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(130,151,189,0.16),0_16px_36px_rgba(43,58,92,0.12)] ring-1 ring-white/30 backdrop-blur-md xl:h-[calc(100%-36px)] xl:self-start">
+    <article className="relative min-h-0 max-h-[240px] overflow-hidden rounded-[1.6rem] border border-[#d7e6ff]/38 bg-[linear-gradient(145deg,rgba(244,248,255,0.72),rgba(202,215,238,0.42))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(130,151,189,0.16),0_16px_36px_rgba(43,58,92,0.12)] ring-1 ring-white/30 backdrop-blur-md sm:max-h-[280px] sm:rounded-[2rem] sm:p-4 xl:h-[260px] xl:max-h-none xl:self-start">
       <div className="absolute inset-x-8 top-0 h-px bg-white/92" />
       <div className="absolute left-4 top-4 h-10 w-10 rounded-full bg-white/28 blur-2xl" />
       <div className="absolute -bottom-10 -right-8 h-36 w-36 rounded-full bg-[#dce8ff]/24 blur-3xl" />
       <div className="absolute -top-8 left-2 h-24 w-24 rounded-full bg-[#8dc4d6]/12 blur-3xl" />
 
       <div className="relative flex h-full min-h-0 flex-col">
-        <p className="text-xs uppercase tracking-[0.2em] text-cyan-700">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-700 sm:text-xs sm:tracking-[0.2em]">
           Extrato
         </p>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">
+        <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">
           Parcelas
         </h2>
-        <p className="mt-1 text-sm leading-4 text-slate-600">
+        <p className="mt-1 text-[13px] leading-4 text-slate-600 sm:text-sm">
           Valores e datas das entradas.
         </p>
 
         <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {sortedInstallments.length === 0 ? (
+            <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white/55 px-4 py-5 text-[13px] text-slate-500 sm:rounded-[1.1rem] sm:py-6 sm:text-sm">
+              Nenhuma parcela registrada ate o momento.
+            </div>
+          ) : null}
+
           {sortedInstallments.map((installment) => (
             <div
               key={installment.id}
-              className="flex items-center justify-between gap-2 rounded-[1.1rem] border border-white/70 bg-white/70 px-2.5 py-2 shadow-[0_10px_24px_rgba(148,163,184,0.12)]"
+              className="flex items-center justify-between gap-2 rounded-[1rem] border border-white/70 bg-white/70 px-2.5 py-2 shadow-[0_10px_24px_rgba(148,163,184,0.12)] sm:rounded-[1.1rem]"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <InstallmentIcon />
 
-                <div>
-                <p className="text-sm font-semibold leading-4 text-slate-900">
-                  Parcela adicionada
-                </p>
-                <p className="mt-1 text-sm leading-4 text-slate-500">
-                  {formatDateBR(installment.addedAt)}
-                </p>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold leading-4 text-slate-900 sm:text-sm">
+                    Parcela adicionada
+                  </p>
+                  <p className="mt-1 text-[12px] leading-4 text-slate-500 sm:text-sm">
+                    {formatDateBR(installment.addedAt)}
+                  </p>
                 </div>
               </div>
 
-              <p className="text-lg font-semibold tracking-tight text-emerald-700">
+              <p className="shrink-0 text-base font-semibold tracking-tight text-emerald-700 sm:text-lg">
                 {formatCurrencyBRL(installment.amount)}
               </p>
             </div>
