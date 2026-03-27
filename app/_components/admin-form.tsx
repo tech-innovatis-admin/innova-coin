@@ -29,6 +29,19 @@ function toDateTimeLocalValue(value: string) {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
 }
 
+function splitHeadName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length <= 1) {
+    return { firstName: name, lastName: "" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 export default function AdminForm({ heads }: AdminFormProps) {
   const router = useRouter();
   const photoInputId = useId();
@@ -139,6 +152,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {heads.map((head) => {
             const ready = head.status === "released";
+            const { firstName, lastName } = splitHeadName(head.name);
 
             return (
               <article
@@ -150,7 +164,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
                 <div className="absolute -right-10 -top-8 h-28 w-28 rounded-full bg-[#dce8ff]/28 blur-3xl" />
                 <div className="absolute -bottom-12 left-2 h-28 w-28 rounded-full bg-[#6f87b7]/12 blur-3xl" />
 
-                <div className="relative flex items-start gap-3">
+                <div className="relative flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-1 items-start gap-3 pr-3">
                     <UserAvatar
                       name={head.name}
@@ -159,15 +173,18 @@ export default function AdminForm({ heads }: AdminFormProps) {
                       className="border-cyan-400/40 text-cyan-700"
                     />
                     <div className="min-w-0">
-                      <h2 className="truncate text-lg font-semibold text-slate-950">
-                        {head.name}
+                      <h2 className="text-lg font-semibold leading-5 text-slate-950">
+                        <span className="block truncate">{firstName}</span>
+                        {lastName ? (
+                          <span className="mt-0.5 block truncate">{lastName}</span>
+                        ) : null}
                       </h2>
                       <p className="mt-1 truncate text-sm text-slate-500">{head.email}</p>
                     </div>
                   </div>
 
                   <span
-                    className={`mr-1 shrink-0 self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    className={`shrink-0 self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                       ready
                         ? "bg-emerald-300/30 text-emerald-800"
                         : "bg-amber-300/30 text-amber-800"
@@ -197,21 +214,21 @@ export default function AdminForm({ heads }: AdminFormProps) {
                   </div>
                 </div>
 
-                <div className="relative mt-5 flex gap-3">
+                <div className="relative mt-5 flex items-center justify-center gap-3">
                   <button
                     type="button"
                     onClick={() => openEditModal(head)}
-                    className="flex-1 rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694]"
+                    className="inline-flex min-w-[170px] justify-center rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694]"
                   >
-                    Editar head
+                    Adicionar parcela
                   </button>
                   <Link
                     href={`/admin/heads/${head.userId}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                    className="inline-flex min-w-[170px] justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                   >
-                    Visualizar head
+                    Visualizar
                   </Link>
                 </div>
               </article>
@@ -232,7 +249,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-cyan-100/80">
-                  Editar head
+                  Adicionar parcela
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-white">
                   {selectedHead.name}
@@ -245,10 +262,23 @@ export default function AdminForm({ heads }: AdminFormProps) {
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-full border border-white/10 px-3 py-1 text-sm text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-400/30 bg-rose-500/10 text-rose-300 transition hover:bg-rose-500/20 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isPending}
+                aria-label="Fechar modal"
               >
-                Fechar
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
               </button>
             </div>
 
@@ -280,9 +310,6 @@ export default function AdminForm({ heads }: AdminFormProps) {
                       >
                         Selecionar foto
                       </label>
-                      <p className="mt-2 text-sm text-slate-300">
-                        {draft.photoUrl ? "Foto pronta para salvar" : "Nenhuma imagem selecionada"}
-                      </p>
                     </div>
 
                     {draft.photoUrl ? (
@@ -297,26 +324,6 @@ export default function AdminForm({ heads }: AdminFormProps) {
                   </div>
                 </div>
               </div>
-
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">Nome</span>
-                <input
-                  type="text"
-                  value={draft.name}
-                  onChange={(event) => updateDraft("name", event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
-                />
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">E-mail</span>
-                <input
-                  type="email"
-                  value={draft.email}
-                  onChange={(event) => updateDraft("email", event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
-                />
-              </label>
 
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-200">

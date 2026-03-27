@@ -1,4 +1,4 @@
-import { formatDateTimeBR, getRemainingTime } from "@/lib/formatters";
+import { formatDateBR, formatDateTimeBR, getRemainingTime } from "@/lib/formatters";
 import type { WithdrawStatus } from "@/lib/heads";
 
 type CountdownCardProps = {
@@ -37,13 +37,9 @@ export default function CountdownCard({
       </div>
 
       <p className="relative mt-2 text-[13px] leading-5 text-slate-600 sm:text-sm">
-        Data prevista: {formatDateTimeBR(availableAt)}
+        Data prevista: {formatDateBR(availableAt)}
       </p>
-      {!ready ? (
-        <p className="relative mt-2 text-[13px] font-medium text-slate-700 sm:text-sm">
-          {getRemainingTime(availableAt)}
-        </p>
-      ) : null}
+      
     </article>
   );
 }
