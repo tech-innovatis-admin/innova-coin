@@ -1,2 +1,2 @@
-export { default as LoginForm } from "./login-form";
-export { default as ParticlesBackground } from "./particles-background";
+export { default as LoginForm } from "./LoginForm";
+export { default as ParticlesBackground } from "./ParticlesBackground";

@@ -1,6 +1,6 @@
 import { AppHeader, LoginForm, ParticlesBackground } from "@/components";
 import { getSessionUser } from "@/lib/auth";
-import { getRedirectTargetForPathname, LOGIN_PATH } from "@/lib/platform-access";
+import { getRedirectTargetForPathname, LOGIN_PATH } from "@/lib/platformAccess";
 import { redirect } from "next/navigation";
 
 export const metadata = {

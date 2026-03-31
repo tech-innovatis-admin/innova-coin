@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getRedirectTargetForPathname } from "@/lib/platform-access";
+import { getRedirectTargetForPathname } from "@/lib/platformAccess";
 import {
   readSessionUserFromToken,
   SESSION_COOKIE_NAME,
-} from "@/lib/session-token";
+} from "@/lib/sessionToken";
 
 async function readProxySessionUser(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;

@@ -1,5 +1,5 @@
 import type { DashboardUser } from "@/lib/heads";
-import HeadDashboardPanel from "../dashboard/head-dashboard-panel";
+import HeadDashboardPanel from "../dashboard/HeadDashboardPanel";
 
 type AdminHeadViewProps = {
   user: DashboardUser;

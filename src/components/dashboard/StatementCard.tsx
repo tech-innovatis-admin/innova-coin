@@ -104,7 +104,7 @@ export default function StatementCard({ installments }: StatementCardProps) {
           {accumulatedInstallments.map((installment) => (
             <div
               key={installment.id}
-              className="flex items-center justify-between gap-3 rounded-[1rem] border border-white/78 bg-white/[0.84] px-3 py-3 shadow-[0_14px_28px_rgba(148,163,184,0.14)] transition duration-300 hover:border-emerald-100 hover:bg-white hover:shadow-[0_18px_38px_rgba(148,163,184,0.18)] sm:rounded-[1.1rem]"
+              className="flex flex-col gap-3 rounded-[1rem] border border-white/78 bg-white/[0.84] px-3 py-3 shadow-[0_14px_28px_rgba(148,163,184,0.14)] transition duration-300 hover:border-emerald-100 hover:bg-white hover:shadow-[0_18px_38px_rgba(148,163,184,0.18)] sm:flex-row sm:items-center sm:justify-between sm:rounded-[1.1rem]"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <InstallmentIcon />
@@ -119,7 +119,7 @@ export default function StatementCard({ installments }: StatementCardProps) {
                 </div>
               </div>
 
-              <p className="shrink-0 text-base font-semibold tracking-tight text-emerald-700 sm:text-lg">
+              <p className="shrink-0 text-left text-base font-semibold tracking-tight text-emerald-700 sm:text-right sm:text-lg">
                 {formatCurrencyBRL(installment.accumulatedAmount)}
               </p>
             </div>

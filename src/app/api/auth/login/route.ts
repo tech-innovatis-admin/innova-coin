@@ -2,9 +2,9 @@ import { setSessionCookie, validateLoginAttempt } from "@/lib/auth";
 import {
   createSessionToken,
   SESSION_DURATION_SECONDS,
-} from "@/lib/session-token";
+} from "@/lib/sessionToken";
 import { jsonNoStore } from "../_lib/http";
-import { extractLoginCredentials } from "../_lib/login-request";
+import { extractLoginCredentials } from "../_lib/loginRequest";
 
 export async function POST(request: Request) {
   const credentials = await extractLoginCredentials(request);

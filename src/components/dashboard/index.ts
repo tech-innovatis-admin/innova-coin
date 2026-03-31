@@ -1,4 +1,4 @@
-export { default as CajuStatementCard } from "./caju-statement-card";
-export { default as DashboardContent } from "./dashboard-content";
-export { default as HeadDashboardPanel } from "./head-dashboard-panel";
-export { default as StatementCard } from "./statement-card";
+export { default as CajuStatementCard } from "./CajuStatementCard";
+export { default as DashboardContent } from "./DashboardContent";
+export { default as HeadDashboardPanel } from "./HeadDashboardPanel";
+export { default as StatementCard } from "./StatementCard";

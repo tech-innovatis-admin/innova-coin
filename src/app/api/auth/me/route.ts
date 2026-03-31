@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/lib/auth";
-import { getPostLoginPath, LOGIN_PATH } from "@/lib/platform-access";
+import { getPostLoginPath, LOGIN_PATH } from "@/lib/platformAccess";
 import { jsonNoStore } from "../_lib/http";
 
 export async function GET() {

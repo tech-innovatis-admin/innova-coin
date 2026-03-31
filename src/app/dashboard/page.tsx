@@ -2,7 +2,7 @@ import { DashboardContent } from "@/components";
 import { mapInstallments, getInstallmentsByUserId } from "@/lib/installments";
 import { getDashboardUserById } from "@/lib/heads";
 import { requireHeadUser } from "@/lib/auth";
-import { LOGIN_PATH } from "@/lib/platform-access";
+import { LOGIN_PATH } from "@/lib/platformAccess";
 import { redirect } from "next/navigation";
 
 export const metadata = {

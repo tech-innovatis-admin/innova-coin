@@ -12,7 +12,7 @@ import {
 } from "@/app/admin/actions";
 import { formatCurrencyBRL } from "@/lib/formatters";
 import type { HeadAccount, InstallmentEntry } from "@/lib/heads";
-import UserAvatar from "../shared/user-avatar";
+import UserAvatar from "../shared/UserAvatar";
 
 type AdminFormProps = {
   heads: HeadAccount[];
@@ -389,18 +389,18 @@ export default function AdminForm({ heads }: AdminFormProps) {
                   </div>
                 </div>
 
-                <div className="relative mt-5 flex items-center justify-center gap-3">
+                <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
                   <button
                     type="button"
                     onClick={() => openCreateBonusModal(head)}
-                    className="inline-flex min-w-[150px] justify-center rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694]"
+                    className="inline-flex w-full justify-center rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694] sm:min-w-[150px]"
                   >
                     Cadastrar bônus
                   </button>
                   <button
                     type="button"
                     onClick={() => openManageBonusModal(head)}
-                    className="inline-flex min-w-[150px] justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                    className="inline-flex w-full justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:min-w-[150px]"
                   >
                     Editar bônus
                   </button>
@@ -413,19 +413,19 @@ export default function AdminForm({ heads }: AdminFormProps) {
 
       {manageHead ? (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 px-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 px-4 backdrop-blur-sm sm:items-center sm:px-6"
           onClick={closeManageModal}
         >
           <div
-            className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[1.5rem] border border-white/10 bg-[#111827] p-4 shadow-2xl shadow-black/40"
+            className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-t-[1.5rem] border border-white/10 bg-[#111827] p-4 shadow-2xl shadow-black/40 sm:rounded-[1.5rem]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-cyan-100/80">
                   Editar bônus
                 </p>
-                <h2 className="mt-1 text-xl font-semibold text-white">
+                <h2 className="mt-1 text-lg font-semibold text-white sm:text-xl">
                   {manageHead.name}
                 </h2>
                 <p className="mt-2 text-sm text-cyan-100/80">
@@ -450,8 +450,8 @@ export default function AdminForm({ heads }: AdminFormProps) {
               </p>
             ) : null}
 
-            <div className="mt-5 overflow-hidden rounded-[1.2rem] border border-white/10">
-              <table className="min-w-full divide-y divide-white/10">
+            <div className="mt-5 overflow-x-auto rounded-[1.2rem] border border-white/10">
+              <table className="min-w-[38rem] divide-y divide-white/10 sm:min-w-full">
                 <thead className="bg-white/5">
                   <tr className="text-left text-xs uppercase tracking-[0.16em] text-cyan-100/70">
                     <th className="px-4 py-3 font-semibold">Data</th>
@@ -522,11 +522,11 @@ export default function AdminForm({ heads }: AdminFormProps) {
 
       {bonusModal ? (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 px-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/70 px-4 backdrop-blur-sm sm:items-center sm:px-6"
           onClick={closeBonusModal}
         >
           <div
-            className="w-full max-w-lg rounded-[1.5rem] border border-white/10 bg-[#111827] p-4 shadow-2xl shadow-black/40"
+            className="w-full max-w-lg rounded-t-[1.5rem] border border-white/10 bg-[#111827] p-4 shadow-2xl shadow-black/40 sm:rounded-[1.5rem]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -534,7 +534,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
                 <p className="text-sm uppercase tracking-[0.2em] text-cyan-100/80">
                   {bonusModal.mode === "edit" ? "Editar bônus" : "Cadastrar bônus"}
                 </p>
-                <h2 className="mt-1 text-xl font-semibold text-white">
+                <h2 className="mt-1 text-lg font-semibold text-white sm:text-xl">
                   {bonusModal.head.name}
                 </h2>
                 <div className="mt-2 space-y-1 text-sm text-cyan-100/80">
@@ -618,11 +618,11 @@ export default function AdminForm({ heads }: AdminFormProps) {
               ) : null}
             </div>
 
-            <div className="mt-4 flex justify-end gap-3">
+            <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={closeBonusModal}
-                className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 disabled={isSubmitting}
               >
                 Cancelar
@@ -630,7 +630,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
               <button
                 type="button"
                 onClick={submitBonusModal}
-                className="rounded-full bg-[#08c9a5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07b694] disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-full bg-[#08c9a5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07b694] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                 disabled={isSubmitting}
               >
                 {isSubmitting

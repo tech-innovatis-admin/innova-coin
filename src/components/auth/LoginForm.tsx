@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import {
   isSafePostLoginPath,
-} from "@/lib/platform-access";
+} from "@/lib/platformAccess";
 
 type LoginResponse =
   | {

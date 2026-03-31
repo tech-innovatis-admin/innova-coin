@@ -1,6 +1,6 @@
 import { getDbPool } from "@/lib/db";
 import { getRemainingTime } from "@/lib/formatters";
-import { isPlatformHeadUser } from "@/lib/platform-access";
+import { isPlatformHeadUser } from "@/lib/platformAccess";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
 

@@ -11,14 +11,14 @@ import {
   hasInnovacoinPlatform,
   LOGIN_PATH,
   HEAD_DASHBOARD_PATH,
-} from "@/lib/platform-access";
+} from "@/lib/platformAccess";
 import {
   createSessionToken as createSignedSessionToken,
   readSessionPayload,
   SESSION_COOKIE_NAME,
   SESSION_DURATION_SECONDS,
   type SessionUser,
-} from "@/lib/session-token";
+} from "@/lib/sessionToken";
 
 type UserRow = {
   id: string | number;

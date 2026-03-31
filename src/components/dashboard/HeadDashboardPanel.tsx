@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 
 import { formatCurrencyBRL } from "@/lib/formatters";
 import { type DashboardUser } from "@/lib/heads";
-import CajuStatementCard from "./caju-statement-card";
-import StatementCard from "./statement-card";
+import CajuStatementCard from "./CajuStatementCard";
+import StatementCard from "./StatementCard";
 
 const PIG_SEGMENT_COUNT = 20;
 
@@ -135,13 +135,13 @@ export default function HeadDashboardPanel({
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 sm:gap-6">
-      <div className="relative overflow-hidden rounded-[1.9rem] border border-slate-200/80 bg-[linear-gradient(145deg,rgba(248,250,252,0.96),rgba(241,245,249,0.88))] px-5 py-5 shadow-[0_20px_48px_rgba(148,163,184,0.12)] ring-1 ring-white/70 transition duration-300 hover:shadow-[0_24px_64px_rgba(148,163,184,0.16)] sm:rounded-[2.15rem] sm:px-8 sm:py-7 lg:flex lg:items-start lg:justify-between lg:gap-8 lg:px-10">
+      <div className="relative overflow-hidden rounded-[1.9rem] border border-slate-200/80 bg-[linear-gradient(145deg,rgba(248,250,252,0.96),rgba(241,245,249,0.88))] px-4 py-5 shadow-[0_20px_48px_rgba(148,163,184,0.12)] ring-1 ring-white/70 transition duration-300 hover:shadow-[0_24px_64px_rgba(148,163,184,0.16)] sm:rounded-[2.15rem] sm:px-8 sm:py-7 lg:flex lg:items-start lg:justify-between lg:gap-8 lg:px-10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.16),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.08),transparent_34%)]" />
         <div className="min-w-0 flex-1 space-y-3">
           <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-700 sm:text-sm sm:tracking-[0.25em]">
             Veja seu saldo no Innova Coin
           </p>
-          <h1 className="text-[1.9rem] font-semibold tracking-tight text-slate-950 sm:text-[2.4rem] lg:text-4xl">
+          <h1 className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[2.4rem] lg:text-4xl">
             {heading}
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
@@ -160,7 +160,7 @@ export default function HeadDashboardPanel({
         </div>
 
         <div className="mt-5 flex w-full justify-end lg:mt-0 lg:w-auto lg:max-w-[400px] lg:flex-none">
-          <div className="relative w-full rounded-[1.55rem] border border-white/75 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(240,249,255,0.90)_54%,rgba(224,242,254,0.82)_100%)] px-6 py-6 shadow-[0_26px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/85 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_32px_82px_rgba(15,23,42,0.16)] sm:rounded-[1.9rem] sm:px-7 sm:py-7 lg:min-w-[360px]">
+          <div className="relative w-full rounded-[1.55rem] border border-white/75 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(240,249,255,0.90)_54%,rgba(224,242,254,0.82)_100%)] px-5 py-6 shadow-[0_26px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/85 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_32px_82px_rgba(15,23,42,0.16)] sm:rounded-[1.9rem] sm:px-7 sm:py-7 lg:min-w-[360px]">
             <div className="pointer-events-none absolute inset-0 rounded-[1.9rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.90),transparent_58%)]" />
             <div className="relative flex flex-wrap items-start justify-between gap-3">
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-xs sm:tracking-[0.2em]">
@@ -186,7 +186,7 @@ export default function HeadDashboardPanel({
                 </div>
               )}
             </div>
-            <p className="relative mt-4 text-[2.35rem] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[3.15rem]">
+            <p className="relative mt-4 break-words text-[2rem] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[3.15rem]">
               {formatCurrencyBRL(user.pendingBalance)}
             </p>
             <p className="relative mt-2 max-w-[26rem] text-sm font-medium leading-6 text-slate-600">
