@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
+import { formatCurrencyBRL } from "@/lib/formatters";
 import { type DashboardUser } from "@/lib/heads";
 import CajuStatementCard from "./caju-statement-card";
 import StatementCard from "./statement-card";
@@ -132,15 +132,6 @@ export default function HeadDashboardPanel({
       PIG_SEGMENT_COUNT) *
       100,
   );
-  const withdrawHeadline =
-    user.status === "released"
-      ? "Saque disponível agora"
-      : user.status === "awaiting_deposit"
-        ? "Prazo de saque definido após o primeiro aporte"
-        : `Saque em ${user.remainingTimeLabel}`;
-  const withdrawSupportingLabel = user.availableAt
-    ? `Previsão de saque: ${formatDateBR(user.availableAt)}`
-    : "A data será confirmada no primeiro aporte do ciclo.";
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 sm:gap-6">
@@ -166,17 +157,6 @@ export default function HeadDashboardPanel({
                 : "O ciclo começa com o primeiro aporte"}
             </span>
           </div>
-          {/* <div className="rounded-[1.2rem] border border-white/80 bg-white/[0.76] px-4 py-3 shadow-[0_14px_28px_rgba(148,163,184,0.12)] backdrop-blur-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:text-[11px]">
-              Prazo para saque
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-950 sm:text-base">
-              {withdrawHeadline}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
-              {withdrawSupportingLabel}
-            </p>
-          </div> */}
         </div>
 
         <div className="mt-5 flex w-full justify-end lg:mt-0 lg:w-auto lg:max-w-[400px] lg:flex-none">
