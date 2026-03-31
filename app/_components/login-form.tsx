@@ -1,15 +1,84 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
+import {
+  isSafePostLoginPath,
+} from "@/lib/platform-access";
 
-import { loginAction, type LoginActionState } from "@/app/login/actions";
-
-const initialState: LoginActionState = {};
+type LoginResponse =
+  | {
+      success: true;
+      redirectTo: string;
+    }
+  | {
+      error: string;
+    };
 
 export default function LoginForm() {
-  const [state, formAction, pending] = useActionState(loginAction, initialState);
   const [showPassword, setShowPassword] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (pending) {
+      return;
+    }
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const identifier = String(formData.get("identifier") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    if (!identifier || !password) {
+      setError("Informe usuário/e-mail e senha.");
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier,
+          password,
+        }),
+      });
+
+      const data = (await response.json()) as LoginResponse;
+
+      if (!response.ok) {
+        setError("error" in data ? data.error : "Não foi possível entrar.");
+        return;
+      }
+
+      if (!("success" in data) || !data.redirectTo) {
+        setError("Resposta de login inválida.");
+        return;
+      }
+
+      if (!isSafePostLoginPath(data.redirectTo)) {
+        setError("Destino de login inválido.");
+        return;
+      }
+
+      window.location.replace(data.redirectTo);
+    } catch {
+      setError("Não foi possível conectar ao servidor.");
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <section className="w-full max-w-sm rounded-[1.7rem] border border-white/10 bg-slate-950/55 px-5 py-6 shadow-2xl shadow-cyan-950/20 backdrop-blur sm:rounded-[2rem] sm:px-8 sm:py-9">
@@ -26,15 +95,15 @@ export default function LoginForm() {
         </h1>
       </div>
 
-      <form action={formAction} className="space-y-3.5 sm:space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
         <label className="block space-y-2">
           <span className="text-sm font-medium text-slate-200">
-            Usuario ou e-mail
+            Usuário ou e-mail
           </span>
           <input
             type="text"
             name="identifier"
-            placeholder="Digite seu usuario ou e-mail"
+            placeholder="Digite seu usuário ou e-mail"
             className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-cyan-300/50 sm:py-3.5"
           />
         </label>
@@ -90,9 +159,9 @@ export default function LoginForm() {
           </div>
         </label>
 
-        {state?.error ? (
+        {error ? (
           <p className="rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-            {state.error}
+            {error}
           </p>
         ) : null}
 

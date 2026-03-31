@@ -2,7 +2,7 @@ import AppHeader from "../_components/app-header";
 import LoginForm from "../_components/login-form";
 import ParticlesBackground from "../_components/particles-background";
 import { getSessionUser } from "@/lib/auth";
-import { getPostLoginPath } from "@/lib/platform-access";
+import { getRedirectTargetForPathname, LOGIN_PATH } from "@/lib/platform-access";
 import { redirect } from "next/navigation";
 
 export const metadata = {
@@ -13,13 +13,10 @@ export const metadata = {
 
 export default async function LoginPage() {
   const sessionUser = await getSessionUser();
+  const redirectTo = getRedirectTargetForPathname(sessionUser, LOGIN_PATH);
 
-  if (sessionUser) {
-    const postLoginPath = getPostLoginPath(sessionUser.id);
-
-    if (postLoginPath) {
-      redirect(postLoginPath);
-    }
+  if (redirectTo) {
+    redirect(redirectTo);
   }
 
   return (

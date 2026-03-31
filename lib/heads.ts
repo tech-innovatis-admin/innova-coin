@@ -1,12 +1,13 @@
 import { getDbPool } from "@/lib/db";
-import { readHeadOverride, readHeadOverrides, writeHeadOverride } from "@/lib/head-overrides";
-import { getPlatformHeadIds, hasPlatformAccess, isPlatformHeadId } from "@/lib/platform-access";
+import { getRemainingTime } from "@/lib/formatters";
+import { isPlatformHeadUser } from "@/lib/platform-access";
 
-export type WithdrawStatus = "pending" | "released";
+export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
 
 export type InstallmentEntry = {
   id: string;
-  amount: number;
+  accumulatedAmount: number;
+  cajuAmount: number;
   addedAt: string;
 };
 
@@ -17,9 +18,12 @@ export type DashboardUser = {
   role: "user";
   photoUrl: string | null;
   pendingBalance: number;
+  cajuBalance: number;
   lastInstallment?: number;
+  lastCajuInstallment?: number;
   installments: InstallmentEntry[];
-  availableAt: string;
+  availableAt: string | null;
+  remainingTimeLabel: string;
   filledPigSegments: number;
   status: WithdrawStatus;
 };
@@ -31,9 +35,12 @@ export type HeadAccount = {
   email: string;
   photoUrl: string | null;
   pendingBalance: number;
+  cajuBalance: number;
   lastInstallment?: number;
+  lastCajuInstallment?: number;
   installments: InstallmentEntry[];
-  availableAt: string;
+  availableAt: string | null;
+  remainingTimeLabel: string;
   status: WithdrawStatus;
 };
 
@@ -44,10 +51,14 @@ type UserSummaryRow = {
   username: string | null;
   name: string | null;
   photo: string | null;
-  created_at: string | Date;
+  platforms: string[] | null;
+  innovacoin_roles: string[] | null;
   pending_balance: string | number | null;
+  caju_balance: string | number | null;
   last_installment: string | number | null;
-  last_deposit_date: string | Date | null;
+  last_caju_installment: string | number | null;
+  first_deposit_date: string | Date | null;
+  installment_count: string | number | null;
 };
 
 function toIsoString(value: string | Date) {
@@ -60,36 +71,32 @@ function addYears(value: string | Date, years: number) {
   return nextDate.toISOString();
 }
 
-function deriveAvailability(
-  lastDepositDate: string | Date | null,
-  createdAt: string | Date,
-) {
-  const availableAt = addYears(lastDepositDate ?? createdAt, 5);
-  const status: WithdrawStatus =
-    new Date(availableAt).getTime() <= Date.now() ? "released" : "pending";
+function deriveAvailability(firstDepositDate: string | Date | null) {
+  if (!firstDepositDate) {
+    return {
+      availableAt: null,
+      remainingTimeLabel: "Aguardando primeira parcela",
+      status: "awaiting_deposit" as const,
+    };
+  }
 
-  return { availableAt, status };
+  const referenceTime = Date.now();
+  const availableAt = addYears(firstDepositDate, 5);
+  const status: WithdrawStatus =
+    new Date(availableAt).getTime() <= referenceTime ? "released" : "pending";
+  const remainingTimeLabel = getRemainingTime(availableAt, referenceTime);
+
+  return { availableAt, remainingTimeLabel, status };
 }
 
-function getFilledPigSegments(availableAt: string) {
-  const releaseDate = new Date(availableAt);
-  const cycleStart = new Date(releaseDate);
-  cycleStart.setFullYear(cycleStart.getFullYear() - 5);
-
-  const totalDuration = releaseDate.getTime() - cycleStart.getTime();
-  const elapsedDuration = Date.now() - cycleStart.getTime();
-  const progress =
-    totalDuration <= 0
-      ? 1
-      : Math.min(Math.max(elapsedDuration / totalDuration, 0), 1);
-
-  return Math.floor(progress * 20);
+function getFilledPigSegments(installmentCount: number) {
+  return Math.min(Math.max(installmentCount, 0), 20);
 }
 
 function normalizeDisplayName(
   row: Pick<UserSummaryRow, "name" | "username" | "email">,
 ) {
-  return row.name?.trim() || row.username?.trim() || row.email?.trim() || "Usuario";
+  return row.name?.trim() || row.username?.trim() || row.email?.trim() || "Usuário";
 }
 
 function normalizeEmail(row: Pick<UserSummaryRow, "email" | "username">) {
@@ -97,9 +104,8 @@ function normalizeEmail(row: Pick<UserSummaryRow, "email" | "username">) {
 }
 
 function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> {
-  const { availableAt, status } = deriveAvailability(
-    row.last_deposit_date,
-    row.created_at,
+  const { availableAt, remainingTimeLabel, status } = deriveAvailability(
+    row.first_deposit_date,
   );
 
   return {
@@ -109,37 +115,21 @@ function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> 
     email: normalizeEmail(row),
     photoUrl: row.photo,
     pendingBalance: Number(row.pending_balance ?? 0),
+    cajuBalance: Number(row.caju_balance ?? 0),
     lastInstallment:
       row.last_installment === null ? undefined : Number(row.last_installment),
+    lastCajuInstallment:
+      row.last_caju_installment === null
+        ? undefined
+        : Number(row.last_caju_installment),
     availableAt,
+    remainingTimeLabel,
     status,
   };
 }
 
-function applyHeadOverride<T extends { availableAt: string; status: WithdrawStatus }>(
-  item: T,
-  override: { availableAt?: string; status?: WithdrawStatus } | null,
-) {
-  if (!override) {
-    return item;
-  }
-
-  return {
-    ...item,
-    availableAt: override.availableAt ?? item.availableAt,
-    status: override.status ?? item.status,
-  };
-}
-
 export async function getHeadSummaries() {
-  const headIds = getPlatformHeadIds();
-
-  if (headIds.length === 0) {
-    return [];
-  }
-
   const pool = getDbPool();
-  const overrides = await readHeadOverrides();
   const result = await pool.query<UserSummaryRow>(
     `
       select
@@ -149,19 +139,43 @@ export async function getHeadSummaries() {
         u.username,
         u.name,
         u.photo,
-        u.created_at,
+        coalesce(u.platforms, array[]::varchar[]) as platforms,
+        coalesce(u.innovacoin_roles, array[]::varchar[]) as innovacoin_roles,
         coalesce(sum(pb.valor_depositado), 0) as pending_balance,
+        coalesce(sum(pb.valor_caju), 0) as caju_balance,
         (
           select pb_last.valor_depositado
           from public.parcelas_bonus pb_last
-          where pb_last.user_id = u.id
+          where
+            pb_last.user_id = u.id
+            and coalesce(pb_last.valor_depositado, 0) > 0
           order by pb_last.data_deposito desc, pb_last.criado_em desc, pb_last.id desc
           limit 1
         ) as last_installment,
-        max(pb.data_deposito) as last_deposit_date
+        (
+          select pb_last.valor_caju
+          from public.parcelas_bonus pb_last
+          where
+            pb_last.user_id = u.id
+            and coalesce(pb_last.valor_caju, 0) > 0
+          order by pb_last.data_deposito desc, pb_last.criado_em desc, pb_last.id desc
+          limit 1
+        ) as last_caju_installment,
+        min(pb.data_deposito) filter (where coalesce(pb.valor_depositado, 0) > 0) as first_deposit_date,
+        count(pb.id) filter (where coalesce(pb.valor_depositado, 0) > 0) as installment_count
       from public.users u
       left join public.parcelas_bonus pb on pb.user_id = u.id
-      where u.id::text = any($1::text[])
+      where
+        exists (
+          select 1
+          from unnest(coalesce(u.platforms, array[]::varchar[])) as platform_name
+          where lower(trim(platform_name)) = $1
+        )
+        and exists (
+          select 1
+          from unnest(coalesce(u.innovacoin_roles, array[]::varchar[])) as role_name
+          where lower(trim(role_name)) = $2
+        )
       group by
         u.id,
         u.email,
@@ -169,7 +183,8 @@ export async function getHeadSummaries() {
         u.username,
         u.name,
         u.photo,
-        u.created_at
+        u.platforms,
+        u.innovacoin_roles
       order by
         coalesce(
           nullif(trim(u.name), ''),
@@ -178,18 +193,13 @@ export async function getHeadSummaries() {
           u.id::text
         ) asc
     `,
-    [headIds],
+    ["innovacoin", "head"],
   );
 
-  return result.rows.map((row) =>
-    applyHeadOverride(
-      {
-        ...mapHeadSummary(row),
-        installments: [],
-      },
-      overrides[String(row.id)] ?? null,
-    ),
-  );
+  return result.rows.map((row) => ({
+    ...mapHeadSummary(row),
+    installments: [],
+  }));
 }
 
 export async function getDashboardUserById(
@@ -206,16 +216,30 @@ export async function getDashboardUserById(
         u.username,
         u.name,
         u.photo,
-        u.created_at,
+        coalesce(u.platforms, array[]::varchar[]) as platforms,
+        coalesce(u.innovacoin_roles, array[]::varchar[]) as innovacoin_roles,
         coalesce(sum(pb.valor_depositado), 0) as pending_balance,
+        coalesce(sum(pb.valor_caju), 0) as caju_balance,
         (
           select pb_last.valor_depositado
           from public.parcelas_bonus pb_last
-          where pb_last.user_id = u.id
+          where
+            pb_last.user_id = u.id
+            and coalesce(pb_last.valor_depositado, 0) > 0
           order by pb_last.data_deposito desc, pb_last.criado_em desc, pb_last.id desc
           limit 1
         ) as last_installment,
-        max(pb.data_deposito) as last_deposit_date
+        (
+          select pb_last.valor_caju
+          from public.parcelas_bonus pb_last
+          where
+            pb_last.user_id = u.id
+            and coalesce(pb_last.valor_caju, 0) > 0
+          order by pb_last.data_deposito desc, pb_last.criado_em desc, pb_last.id desc
+          limit 1
+        ) as last_caju_installment,
+        min(pb.data_deposito) filter (where coalesce(pb.valor_depositado, 0) > 0) as first_deposit_date,
+        count(pb.id) filter (where coalesce(pb.valor_depositado, 0) > 0) as installment_count
       from public.users u
       left join public.parcelas_bonus pb on pb.user_id = u.id
       where u.id = $1::bigint
@@ -226,7 +250,8 @@ export async function getDashboardUserById(
         u.username,
         u.name,
         u.photo,
-        u.created_at
+        u.platforms,
+        u.innovacoin_roles
       limit 1
     `,
     [userId],
@@ -238,36 +263,40 @@ export async function getDashboardUserById(
     return null;
   }
 
-  if (!hasPlatformAccess(String(user.id))) {
+  const platformUser = {
+    id: String(user.id),
+    platforms: user.platforms,
+    innovacoinRoles: user.innovacoin_roles,
+  };
+
+  if (!isPlatformHeadUser(platformUser)) {
     return null;
   }
 
-  const { availableAt, status } = deriveAvailability(
-    user.last_deposit_date,
-    user.created_at,
+  const { availableAt, remainingTimeLabel, status } = deriveAvailability(
+    user.first_deposit_date,
   );
-  const override = await readHeadOverride(String(user.id));
+  const installmentCount = Number(user.installment_count ?? 0);
 
-  const dashboardUser = {
+  return {
     id: String(user.id),
     name: normalizeDisplayName(user),
     email: normalizeEmail(user),
     role: "user",
     photoUrl: user.photo,
     pendingBalance: Number(user.pending_balance ?? 0),
+    cajuBalance: Number(user.caju_balance ?? 0),
     lastInstallment:
       user.last_installment === null ? undefined : Number(user.last_installment),
+    lastCajuInstallment:
+      user.last_caju_installment === null
+        ? undefined
+        : Number(user.last_caju_installment),
     installments,
     availableAt,
-    filledPigSegments: getFilledPigSegments(availableAt),
-    status: isPlatformHeadId(String(user.id)) ? status : "released",
-  } satisfies DashboardUser;
-
-  const overriddenUser = applyHeadOverride(dashboardUser, override);
-
-  return {
-    ...overriddenUser,
-    filledPigSegments: getFilledPigSegments(overriddenUser.availableAt),
+    remainingTimeLabel,
+    filledPigSegments: getFilledPigSegments(installmentCount),
+    status,
   } satisfies DashboardUser;
 }
 
@@ -295,7 +324,9 @@ export async function updateHeadProfile(input: {
 
 export async function addInstallmentToHead(input: {
   userId: string;
-  amount: number;
+  accumulatedAmount: number;
+  cajuAmount: number;
+  depositDate: string;
 }) {
   const pool = getDbPool();
 
@@ -304,25 +335,15 @@ export async function addInstallmentToHead(input: {
       insert into public.parcelas_bonus (
         user_id,
         valor_depositado,
+        valor_caju,
         data_deposito,
         criado_em,
         atualizado_em
       )
-      values ($1::bigint, $2::numeric, current_date, now(), now())
+      values ($1::bigint, $2::numeric, $3::numeric, $4::date, now(), now())
     `,
-    [input.userId, input.amount],
+    [input.userId, input.accumulatedAmount, input.cajuAmount, input.depositDate],
   );
-}
-
-export async function updateHeadReleaseSettings(input: {
-  userId: string;
-  availableAt: string;
-  status: WithdrawStatus;
-}) {
-  await writeHeadOverride(input.userId, {
-    availableAt: input.availableAt,
-    status: input.status,
-  });
 }
 
 export function mapInstallmentDate(value: string | Date) {

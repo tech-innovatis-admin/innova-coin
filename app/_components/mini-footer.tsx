@@ -9,7 +9,7 @@ const MiniFooter = () => {
             <div className="space-x-1.5 sm:space-x-2">
               <span>Termo de uso</span>
               <span>|</span>
-              <span>Privacidade e Politica</span>
+              <span>Política de Privacidade</span>
             </div>
           </div>
 

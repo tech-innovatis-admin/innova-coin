@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
-      <body className="min-h-screen bg-white text-slate-950">
+      <body suppressHydrationWarning className="min-h-screen bg-white text-slate-950">
         <div className="relative isolate flex min-h-screen flex-col bg-white text-slate-950">
           <div className="relative z-10 flex min-h-screen flex-col">
             {children}

@@ -2,6 +2,8 @@ import DashboardContent from "../_components/dashboard-content";
 import { mapInstallments, getInstallmentsByUserId } from "@/lib/installments";
 import { getDashboardUserById } from "@/lib/heads";
 import { requireHeadUser } from "@/lib/auth";
+import { LOGIN_PATH } from "@/lib/platform-access";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Painel do HEAD",
@@ -15,7 +17,7 @@ export default async function DashboardPage() {
   const dashboardUser = await getDashboardUserById(sessionUser.id, installments);
 
   if (!dashboardUser) {
-    throw new Error("User not found in database.");
+    redirect(LOGIN_PATH);
   }
 
   return <DashboardContent initialUser={dashboardUser} />;

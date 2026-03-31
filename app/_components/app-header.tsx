@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
-import { logoutAction } from "@/app/login/actions";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import UserAvatar from "./user-avatar";
 
 type AppHeaderProps = {
@@ -36,17 +36,62 @@ export default function AppHeader({
   userPhoto,
   headerAction,
 }: AppHeaderProps) {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const hideBrandTextOnMobile = profileMode === "admin" && Boolean(headerAction);
 
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      window.location.assign("/login");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
+  function renderLogoutButton() {
+    return (
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        className="rounded-full border border-white/12 bg-white/[0.07] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] backdrop-blur-md transition duration-300 hover:-translate-y-px hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isLoggingOut ? "Saindo..." : "Sair"}
+      </button>
+    );
+  }
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-17 border-b border-white/8 bg-[#131c2f] shadow-[0_12px_28px_rgba(7,11,20,0.24)]">
+    <header className="fixed top-0 left-0 right-0 z-50 h-17 border-b border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(20,29,47,0.96))] shadow-[0_16px_36px_rgba(7,11,20,0.28)] backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.18),transparent_26%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.10),transparent_24%)]" />
       <div
-        className={`mx-auto flex h-17 w-full max-w-6xl items-center px-4 sm:px-6 ${
+        className={`relative mx-auto flex h-17 w-full max-w-6xl items-center px-4 sm:px-6 ${
           centerBrand ? "justify-center" : "justify-between"
         }`}
       >
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/4 ring-1 ring-white/8 sm:h-14 sm:w-16">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_24px_rgba(15,23,42,0.18)] ring-1 ring-white/8 backdrop-blur-md sm:h-14 sm:w-16">
             <Image
               src="/logo_innovatis_oficial.svg"
               alt="Innovatis Logo"
@@ -67,7 +112,7 @@ export default function AppHeader({
 
         <div className={`flex shrink-0 items-center gap-2 sm:gap-3 ${centerBrand ? "hidden" : ""}`}>
           {showAdminNav ? (
-            <nav className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/6 p-1">
+            <nav className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] p-1 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur-md">
               {links.map((link) => {
                 const active = activePath === link.href;
 
@@ -75,9 +120,9 @@ export default function AppHeader({
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`flex h-9 items-center rounded-full px-4 text-sm transition ${
+                    className={`flex h-9 items-center rounded-full px-4 text-sm font-medium transition duration-300 ${
                       active
-                        ? "bg-[#dbe4ee] text-[#131c2f]"
+                        ? "bg-[#eef4fb] text-[#131c2f] shadow-[0_10px_22px_rgba(255,255,255,0.10)]"
                         : "text-slate-200 hover:bg-white/10"
                     }`}
                   >
@@ -91,26 +136,19 @@ export default function AppHeader({
           {profileMode === "user" ? (
             <>
               <UserAvatar
-                name={userName ?? "Usuario"}
+                name={userName ?? "Usuário"}
                 photoUrl={userPhoto}
                 size="sm"
               />
               {headerAction ? (
                 <Link
                   href={headerAction.href}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="rounded-full border border-white/12 bg-white/[0.07] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] backdrop-blur-md transition duration-300 hover:-translate-y-px hover:bg-white/12"
                 >
                   {headerAction.label}
                 </Link>
               ) : null}
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-                >
-                  Sair
-                </button>
-              </form>
+              {renderLogoutButton()}
             </>
           ) : null}
 
@@ -124,19 +162,12 @@ export default function AppHeader({
               {headerAction ? (
                 <Link
                   href={headerAction.href}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="rounded-full border border-white/12 bg-white/[0.07] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] backdrop-blur-md transition duration-300 hover:-translate-y-px hover:bg-white/12"
                 >
                   {headerAction.label}
                 </Link>
               ) : null}
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-                >
-                  Sair
-                </button>
-              </form>
+              {renderLogoutButton()}
             </>
           ) : null}
         </div>

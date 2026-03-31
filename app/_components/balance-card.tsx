@@ -20,7 +20,7 @@ export default function BalanceCard({ value }: BalanceCardProps) {
           {formatCurrencyBRL(value)}
         </p>
         <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
-          Valor disponivel para resgate assim que o prazo for
+          Valor disponível para resgate assim que o prazo for
           atingido.
         </p>
       </div>

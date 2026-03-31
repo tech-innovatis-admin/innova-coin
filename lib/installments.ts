@@ -5,6 +5,7 @@ type InstallmentRow = {
   id: string | number;
   user_id: string | number;
   valor_depositado: string | number;
+  valor_caju: string | number | null;
   data_deposito: string | Date;
   criado_em: string | Date | null;
 };
@@ -17,6 +18,7 @@ export async function getInstallmentsByUserEmail(email: string) {
         pb.id,
         pb.user_id,
         pb.valor_depositado,
+        pb.valor_caju,
         pb.data_deposito,
         pb.criado_em
       from public.parcelas_bonus pb
@@ -38,6 +40,7 @@ export async function getInstallmentsByUserId(userId: string) {
         pb.id,
         pb.user_id,
         pb.valor_depositado,
+        pb.valor_caju,
         pb.data_deposito,
         pb.criado_em
       from public.parcelas_bonus pb
@@ -52,7 +55,8 @@ export async function getInstallmentsByUserId(userId: string) {
 
 export async function updateInstallmentById(input: {
   installmentId: string;
-  amount: number;
+  accumulatedAmount: number;
+  cajuAmount: number;
   depositDate: string;
 }) {
   const pool = getDbPool();
@@ -62,11 +66,17 @@ export async function updateInstallmentById(input: {
       update public.parcelas_bonus
       set
         valor_depositado = $2::numeric,
-        data_deposito = $3::date,
+        valor_caju = $3::numeric,
+        data_deposito = $4::date,
         atualizado_em = now()
       where id = $1::bigint
     `,
-    [input.installmentId, input.amount, input.depositDate],
+    [
+      input.installmentId,
+      input.accumulatedAmount,
+      input.cajuAmount,
+      input.depositDate,
+    ],
   );
 }
 
@@ -85,7 +95,8 @@ export async function deleteInstallmentById(installmentId: string) {
 export function mapInstallments(rows: InstallmentRow[]): InstallmentEntry[] {
   return rows.map((row) => ({
     id: String(row.id),
-    amount: Number(row.valor_depositado),
+    accumulatedAmount: Number(row.valor_depositado ?? 0),
+    cajuAmount: Number(row.valor_caju ?? 0),
     addedAt: mapInstallmentDate(row.data_deposito),
   }));
 }

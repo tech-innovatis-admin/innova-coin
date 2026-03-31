@@ -3,131 +3,179 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminUser } from "@/lib/auth";
+import { addInstallmentToHead, type InstallmentEntry } from "@/lib/heads";
 import {
-  addInstallmentToHead,
-  updateHeadProfile,
-  updateHeadReleaseSettings,
-  type WithdrawStatus,
-} from "@/lib/heads";
-import { deleteInstallmentById, updateInstallmentById } from "@/lib/installments";
+  deleteInstallmentById,
+  getInstallmentsByUserId,
+  mapInstallments,
+  updateInstallmentById,
+} from "@/lib/installments";
 
-export type SaveHeadActionResult = {
+export type InstallmentActionResult = {
   error?: string;
   success?: true;
 };
 
-export type EditInstallmentActionResult = {
+export type LoadHeadInstallmentsActionResult = {
   error?: string;
-  success?: true;
+  installments?: InstallmentEntry[];
 };
 
-export async function saveHeadAction(
-  _previousState: SaveHeadActionResult | undefined,
+function parseCurrencyInput(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return 0;
+  }
+
+  const normalizedValue = trimmedValue.replace(/\s/g, "");
+  const sanitizedValue = normalizedValue.replace(/[^\d,.-]/g, "");
+
+  if (!sanitizedValue) {
+    return Number.NaN;
+  }
+
+  if (sanitizedValue.includes(",")) {
+    return Number(sanitizedValue.replace(/\./g, "").replace(",", "."));
+  }
+
+  return Number(sanitizedValue);
+}
+
+function isValidInputDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function revalidateHeadPaths(userId: string) {
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  revalidatePath(`/admin/heads/${userId}`);
+}
+
+export async function getHeadInstallmentsAction(
+  userId: string,
+): Promise<LoadHeadInstallmentsActionResult> {
+  await requireAdminUser();
+
+  if (!userId) {
+    return { error: "Head inválido." };
+  }
+
+  const rows = await getInstallmentsByUserId(userId);
+
+  return {
+    installments: mapInstallments(rows),
+  };
+}
+
+export async function createInstallmentAction(
+  _previousState: InstallmentActionResult | undefined,
   formData: FormData,
 ) {
   await requireAdminUser();
 
   const userId = String(formData.get("userId") ?? "").trim();
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const photoUrlValue = String(formData.get("photoUrl") ?? "").trim();
-  const installmentValue = String(formData.get("newInstallment") ?? "").trim();
-  const availableAt = String(formData.get("availableAt") ?? "").trim();
-  const status = String(formData.get("status") ?? "").trim() as WithdrawStatus;
+  const accumulatedValue = String(formData.get("accumulatedAmount") ?? "").trim();
+  const cajuValue = String(formData.get("cajuAmount") ?? "").trim();
+  const depositDate = String(formData.get("depositDate") ?? "").trim();
 
   if (!userId) {
-    return { error: "Usuario invalido." } satisfies SaveHeadActionResult;
+    return { error: "Head inválido." } satisfies InstallmentActionResult;
   }
 
-  if (!name) {
-    return { error: "Informe o nome do head." } satisfies SaveHeadActionResult;
-  }
+  const accumulatedAmount = parseCurrencyInput(accumulatedValue);
+  const cajuAmount = parseCurrencyInput(cajuValue);
 
-  const installmentAmount =
-    installmentValue === "" ? 0 : Number(installmentValue.replace(",", "."));
-
-  if (Number.isNaN(installmentAmount) || installmentAmount < 0) {
+  if (Number.isNaN(accumulatedAmount) || accumulatedAmount < 0) {
     return {
-      error: "Informe um valor de parcela valido.",
-    } satisfies SaveHeadActionResult;
+      error: "Informe um valor válido para o acumulado.",
+    } satisfies InstallmentActionResult;
   }
 
-  if (!availableAt) {
+  if (Number.isNaN(cajuAmount) || cajuAmount < 0) {
     return {
-      error: "Informe a liberacao estimada.",
-    } satisfies SaveHeadActionResult;
+      error: "Informe um valor válido para o cartão Caju.",
+    } satisfies InstallmentActionResult;
   }
 
-  if (status !== "pending" && status !== "released") {
+  if (accumulatedAmount <= 0 && cajuAmount <= 0) {
     return {
-      error: "Informe um status valido.",
-    } satisfies SaveHeadActionResult;
+      error: "Informe pelo menos um valor para o bônus.",
+    } satisfies InstallmentActionResult;
   }
 
-  await updateHeadProfile({
+  if (!depositDate || !isValidInputDate(depositDate)) {
+    return {
+      error: "Informe a data real do depósito.",
+    } satisfies InstallmentActionResult;
+  }
+
+  await addInstallmentToHead({
     userId,
-    name,
-    email,
-    photoUrl: photoUrlValue || null,
+    accumulatedAmount,
+    cajuAmount,
+    depositDate,
   });
 
-  await updateHeadReleaseSettings({
-    userId,
-    availableAt: new Date(availableAt).toISOString(),
-    status,
-  });
+  revalidateHeadPaths(userId);
 
-  if (installmentAmount > 0) {
-    await addInstallmentToHead({
-      userId,
-      amount: installmentAmount,
-    });
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
-  revalidatePath("/");
-  revalidatePath(`/admin/heads/${userId}`);
-
-  return { success: true } satisfies SaveHeadActionResult;
+  return { success: true } satisfies InstallmentActionResult;
 }
 
 export async function updateInstallmentAction(
-  _previousState: EditInstallmentActionResult | undefined,
+  _previousState: InstallmentActionResult | undefined,
   formData: FormData,
 ) {
   await requireAdminUser();
 
   const headId = String(formData.get("headId") ?? "").trim();
   const installmentId = String(formData.get("installmentId") ?? "").trim();
-  const amountValue = String(formData.get("amount") ?? "").trim();
+  const accumulatedValue = String(formData.get("accumulatedAmount") ?? "").trim();
+  const cajuValue = String(formData.get("cajuAmount") ?? "").trim();
   const depositDate = String(formData.get("depositDate") ?? "").trim();
 
   if (!headId || !installmentId) {
-    return { error: "Parcela invalida." } satisfies EditInstallmentActionResult;
+    return { error: "Parcela inválida." } satisfies InstallmentActionResult;
   }
 
-  const amount = Number(amountValue.replace(",", "."));
+  const accumulatedAmount = parseCurrencyInput(accumulatedValue);
+  const cajuAmount = parseCurrencyInput(cajuValue);
 
-  if (Number.isNaN(amount) || amount < 0) {
-    return { error: "Informe um valor valido." } satisfies EditInstallmentActionResult;
+  if (Number.isNaN(accumulatedAmount) || accumulatedAmount < 0) {
+    return {
+      error: "Informe um valor válido para o acumulado.",
+    } satisfies InstallmentActionResult;
   }
 
-  if (!depositDate) {
-    return { error: "Informe a data do deposito." } satisfies EditInstallmentActionResult;
+  if (Number.isNaN(cajuAmount) || cajuAmount < 0) {
+    return {
+      error: "Informe um valor válido para o cartão Caju.",
+    } satisfies InstallmentActionResult;
+  }
+
+  if (accumulatedAmount <= 0 && cajuAmount <= 0) {
+    return {
+      error: "Informe pelo menos um valor para o bônus.",
+    } satisfies InstallmentActionResult;
+  }
+
+  if (!depositDate || !isValidInputDate(depositDate)) {
+    return {
+      error: "Informe a data real do depósito.",
+    } satisfies InstallmentActionResult;
   }
 
   await updateInstallmentById({
     installmentId,
-    amount,
+    accumulatedAmount,
+    cajuAmount,
     depositDate,
   });
 
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
-  revalidatePath(`/admin/heads/${headId}`);
+  revalidateHeadPaths(headId);
 
-  return { success: true } satisfies EditInstallmentActionResult;
+  return { success: true } satisfies InstallmentActionResult;
 }
 
 export async function deleteInstallmentAction(formData: FormData) {
@@ -141,8 +189,5 @@ export async function deleteInstallmentAction(formData: FormData) {
   }
 
   await deleteInstallmentById(installmentId);
-
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
-  revalidatePath(`/admin/heads/${headId}`);
+  revalidateHeadPaths(headId);
 }
