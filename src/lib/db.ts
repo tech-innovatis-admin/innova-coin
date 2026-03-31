@@ -4,18 +4,45 @@ declare global {
   var __appHeadsPgPool: Pool | undefined;
 }
 
-function createDatabaseUrl() {
-  if (
-    process.env.DATABASE_URL &&
-    !process.env.DATABASE_URL.includes("${")
-  ) {
-    return process.env.DATABASE_URL;
+function readFirstDefinedEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name];
+
+    if (value && !value.includes("${")) {
+      return value;
+    }
   }
 
-  const { DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD } = process.env;
+  return undefined;
+}
+
+function createDatabaseUrl() {
+  const databaseUrl = readFirstDefinedEnv(
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "POSTGRESQL_URL",
+  );
+
+  if (databaseUrl) {
+    return databaseUrl;
+  }
+
+  const DB_HOST = readFirstDefinedEnv("DB_HOST", "POSTGRES_HOST", "PGHOST");
+  const DB_PORT = readFirstDefinedEnv("DB_PORT", "POSTGRES_PORT", "PGPORT");
+  const DB_NAME = readFirstDefinedEnv("DB_NAME", "POSTGRES_DB", "PGDATABASE");
+  const DB_USER = readFirstDefinedEnv("DB_USER", "POSTGRES_USER", "PGUSER");
+  const DB_PASSWORD = readFirstDefinedEnv(
+    "DB_PASSWORD",
+    "POSTGRES_PASSWORD",
+    "PGPASSWORD",
+  );
 
   if (!DB_HOST || !DB_PORT || !DB_NAME || !DB_USER || !DB_PASSWORD) {
-    throw new Error("Missing PostgreSQL environment variables.");
+    throw new Error(
+      "Missing PostgreSQL environment variables. Configure DATABASE_URL or DB_HOST, DB_PORT, DB_NAME, DB_USER and DB_PASSWORD.",
+    );
   }
 
   return `postgresql://${encodeURIComponent(DB_USER)}:${encodeURIComponent(

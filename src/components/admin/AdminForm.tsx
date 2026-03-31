@@ -281,7 +281,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
       <section className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-600">
-            Heads com acesso ao Innovacoin carregados do banco. Cadastre novos bônus
+            Heads com acesso ao InnovaCoin carregados do banco. Cadastre novos bônus
             e edite os registros sem sair desta tela.
           </p>
         </div>
@@ -550,7 +550,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
                 disabled={isSubmitting}
                 aria-label="Fechar modal"
               >
-                ×
+                X
               </button>
             </div>
 
