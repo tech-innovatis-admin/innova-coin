@@ -87,11 +87,15 @@ export default function AppHeader({
     <header className="fixed top-0 left-0 right-0 z-50 h-17 border-b border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(20,29,47,0.96))] shadow-[0_16px_36px_rgba(7,11,20,0.28)] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.18),transparent_26%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.10),transparent_24%)]" />
       <div
-        className={`relative mx-auto flex h-17 w-full max-w-6xl items-center px-4 sm:px-6 ${
-          centerBrand ? "justify-center" : "justify-between"
-        }`}
+        className="relative mx-auto flex h-17 w-full max-w-6xl items-center justify-between px-4 sm:px-6"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+        <div
+          className={`flex items-center gap-2 sm:gap-4 ${
+            centerBrand
+              ? "absolute left-1/2 -translate-x-1/2"
+              : "min-w-0 flex-1"
+          }`}
+        >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_24px_rgba(15,23,42,0.18)] ring-1 ring-white/8 backdrop-blur-md sm:h-14 sm:w-16">
             <Image
               src="/logo_innovatis_oficial.svg"
