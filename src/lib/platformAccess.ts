@@ -43,7 +43,7 @@ export function isPlatformHeadUser(user: PlatformAccessUser) {
 }
 
 export function hasPlatformAccess(user: PlatformAccessUser) {
-  return isPlatformAdminUser(user) || isPlatformHeadUser(user);
+  return Boolean(user.id?.trim());
 }
 
 export function isSafePostLoginPath(pathname: string | null | undefined) {
@@ -74,7 +74,7 @@ export function getPostLoginPath(user: PlatformAccessUser) {
     return ADMIN_HOME_PATH;
   }
 
-  if (isPlatformHeadUser(user)) {
+  if (hasPlatformAccess(user)) {
     return HEAD_DASHBOARD_PATH;
   }
 
@@ -100,11 +100,11 @@ export function getRedirectTargetForPathname(
   }
 
   if (isAdminPath(pathname) && !isPlatformAdminUser(user)) {
-    return postLoginPath;
+    return HEAD_DASHBOARD_PATH;
   }
 
-  if (isHeadPath(pathname) && !isPlatformHeadUser(user)) {
-    return postLoginPath;
+  if (isHeadPath(pathname) && !hasPlatformAccess(user)) {
+    return LOGIN_PATH;
   }
 
   return null;

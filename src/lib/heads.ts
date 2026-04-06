@@ -1,6 +1,5 @@
 import { getDbPool } from "@/lib/db";
 import { getRemainingTime } from "@/lib/formatters";
-import { isPlatformHeadUser } from "@/lib/platformAccess";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
 
@@ -33,6 +32,7 @@ export type HeadAccount = {
   userId: string;
   name: string;
   email: string;
+  isHead: boolean;
   photoUrl: string | null;
   pendingBalance: number;
   cajuBalance: number;
@@ -107,12 +107,15 @@ function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> 
   const { availableAt, remainingTimeLabel, status } = deriveAvailability(
     row.first_deposit_date,
   );
+  const normalizedRoles =
+    row.innovacoin_roles?.map((role) => role.trim().toLowerCase()).filter(Boolean) ?? [];
 
   return {
     id: String(row.id),
     userId: String(row.id),
     name: normalizeDisplayName(row),
     email: normalizeEmail(row),
+    isHead: normalizedRoles.includes("head"),
     photoUrl: row.photo,
     pendingBalance: Number(row.pending_balance ?? 0),
     cajuBalance: Number(row.caju_balance ?? 0),
@@ -165,17 +168,6 @@ export async function getHeadSummaries() {
         count(pb.id) filter (where coalesce(pb.valor_depositado, 0) > 0) as installment_count
       from public.users u
       left join public.parcelas_bonus pb on pb.user_id = u.id
-      where
-        exists (
-          select 1
-          from unnest(coalesce(u.platforms, array[]::varchar[])) as platform_name
-          where lower(trim(platform_name)) = $1
-        )
-        and exists (
-          select 1
-          from unnest(coalesce(u.innovacoin_roles, array[]::varchar[])) as role_name
-          where lower(trim(role_name)) = $2
-        )
       group by
         u.id,
         u.email,
@@ -193,7 +185,6 @@ export async function getHeadSummaries() {
           u.id::text
         ) asc
     `,
-    ["innovacoin", "head"],
   );
 
   return result.rows.map((row) => ({
@@ -260,16 +251,6 @@ export async function getDashboardUserById(
   const user = result.rows[0];
 
   if (!user) {
-    return null;
-  }
-
-  const platformUser = {
-    id: String(user.id),
-    platforms: user.platforms,
-    innovacoinRoles: user.innovacoin_roles,
-  };
-
-  if (!isPlatformHeadUser(platformUser)) {
     return null;
   }
 

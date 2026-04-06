@@ -8,7 +8,6 @@ import {
   ADMIN_HOME_PATH,
   getPostLoginPath,
   getRedirectTargetForPathname,
-  hasInnovacoinPlatform,
   LOGIN_PATH,
   HEAD_DASHBOARD_PATH,
 } from "@/lib/platformAccess";
@@ -260,21 +259,13 @@ export async function validateLoginAttempt(
     };
   }
 
-  if (!hasInnovacoinPlatform(user)) {
-    return {
-      success: false,
-      status: 403,
-      error: "Usuário sem acesso à plataforma Innovacoin.",
-    };
-  }
-
   const redirectTo = getPostLoginPath(user);
 
   if (!redirectTo) {
     return {
       success: false,
       status: 403,
-      error: "Usuário sem perfil configurado na plataforma Innovacoin.",
+      error: "Usuário sem acesso à plataforma.",
     };
   }
 

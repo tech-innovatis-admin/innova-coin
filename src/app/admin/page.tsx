@@ -9,7 +9,7 @@ export const metadata = {
 
 export default async function AdminPage() {
   const sessionUser = await requireAdminUser();
-  const heads = await getHeadSummaries();
+  const users = await getHeadSummaries();
 
   return (
     <>
@@ -22,11 +22,11 @@ export default async function AdminPage() {
         <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6">
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
-              Heads e saldos pendentes
+              Usuários e saldos pendentes
             </h1>
           </div>
 
-          <AdminForm heads={heads} />
+          <AdminForm heads={users} />
         </section>
       </main>
     </>
