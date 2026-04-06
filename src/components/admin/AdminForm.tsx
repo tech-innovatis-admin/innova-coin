@@ -147,7 +147,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
   const [bonusFeedback, setBonusFeedback] = useState<string | null>(null);
   const [manageFeedback, setManageFeedback] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
-    heads: false,
+    heads: true,
     staff: false,
   });
   const [isSubmitting, startSubmitting] = useTransition();
@@ -487,7 +487,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
           )}
           {renderSection(
             "staff",
-            "Demais colaboradores",
+            "Colaboradores",
             staffUsers,
           )}
         </section>
