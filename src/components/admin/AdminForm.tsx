@@ -27,6 +27,8 @@ type BonusModalState = {
   depositDate: string;
 };
 
+type SectionKey = "heads" | "staff";
+
 function formatBRLCurrencyInput(value: string) {
   const digitsOnly = value.replace(/\D/g, "");
 
@@ -120,6 +122,23 @@ function EyeIcon() {
   );
 }
 
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
 export default function AdminForm({ heads }: AdminFormProps) {
   const router = useRouter();
   const [bonusModal, setBonusModal] = useState<BonusModalState | null>(null);
@@ -127,8 +146,22 @@ export default function AdminForm({ heads }: AdminFormProps) {
   const [manageInstallments, setManageInstallments] = useState<InstallmentEntry[]>([]);
   const [bonusFeedback, setBonusFeedback] = useState<string | null>(null);
   const [manageFeedback, setManageFeedback] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
+    heads: true,
+    staff: false,
+  });
   const [isSubmitting, startSubmitting] = useTransition();
   const [isLoadingManage, startLoadingManage] = useTransition();
+
+  const headUsers = heads.filter((user) => user.isHead);
+  const staffUsers = heads.filter((user) => !user.isHead);
+
+  function toggleSection(section: SectionKey) {
+    setExpandedSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  }
 
   function openCreateBonusModal(head: HeadAccount) {
     setBonusFeedback(null);
@@ -276,138 +309,187 @@ export default function AdminForm({ heads }: AdminFormProps) {
     });
   }
 
+  function renderEmptySection(message: string) {
+    return (
+      <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+        {message}
+      </div>
+    );
+  }
+
+  function renderUserCard(head: HeadAccount) {
+    const ready = head.status === "released";
+    const waitingFirstDeposit = head.status === "awaiting_deposit";
+    const { firstName, lastName } = splitHeadName(head.name);
+
+    return (
+      <article
+        key={head.id}
+        className="relative overflow-hidden rounded-[1.75rem] border border-[#d7e6ff]/38 bg-[linear-gradient(145deg,rgba(244,248,255,0.72),rgba(202,215,238,0.42))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(130,151,189,0.16),0_16px_36px_rgba(43,58,92,0.12)] ring-1 ring-white/30 backdrop-blur-md"
+      >
+        <div className="absolute inset-x-5 top-0 h-px bg-white/92" />
+        <div className="absolute left-4 top-4 h-10 w-10 rounded-full bg-white/28 blur-2xl" />
+        <div className="absolute -right-10 -top-8 h-28 w-28 rounded-full bg-[#dce8ff]/28 blur-3xl" />
+        <div className="absolute -bottom-12 left-2 h-28 w-28 rounded-full bg-[#6f87b7]/12 blur-3xl" />
+
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3 pr-3">
+            <UserAvatar
+              name={head.name}
+              photoUrl={head.photoUrl}
+              size="md"
+              className="border-cyan-400/40 text-cyan-700"
+            />
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold leading-5 text-slate-950">
+                <span className="block truncate">{firstName}</span>
+                {lastName ? <span className="mt-0.5 block truncate">{lastName}</span> : null}
+              </h2>
+              <p className="mt-1 truncate text-sm text-slate-500">{head.email}</p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            <span
+              className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                ready
+                  ? "bg-emerald-300/30 text-emerald-800"
+                  : waitingFirstDeposit
+                    ? "bg-slate-300/35 text-slate-700"
+                    : "bg-amber-300/30 text-amber-800"
+              }`}
+            >
+              {ready ? "Liberado" : waitingFirstDeposit ? "Sem depósito" : "Pendente"}
+            </span>
+            <Link
+              href={`/admin/heads/${head.userId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-500/10 text-cyan-700 transition hover:bg-cyan-500/20 hover:text-cyan-800"
+              aria-label={`Visualizar painel de ${head.name}`}
+            >
+              <EyeIcon />
+            </Link>
+          </div>
+        </div>
+
+        <div className="relative mt-5 space-y-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Acumulado</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">
+              {formatCurrencyBRL(head.pendingBalance)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Caju liberado</p>
+            <p className="mt-1 text-lg font-semibold text-emerald-700">
+              {formatCurrencyBRL(head.cajuBalance)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Tempo restante</p>
+            <p className="mt-1 text-sm font-medium text-slate-700">
+              {ready ? "Disponível agora" : head.remainingTimeLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+          <button
+            type="button"
+            onClick={() => openCreateBonusModal(head)}
+            className="inline-flex w-full justify-center rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694] sm:min-w-[150px]"
+          >
+            Cadastrar bônus
+          </button>
+          <button
+            type="button"
+            onClick={() => openManageBonusModal(head)}
+            className="inline-flex w-full justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:min-w-[150px]"
+          >
+            Editar bônus
+          </button>
+        </div>
+      </article>
+    );
+  }
+
+  function renderSection(
+    key: SectionKey,
+    title: string,
+    users: HeadAccount[],
+  ) {
+    const expanded = expandedSections[key];
+
+    return (
+      <section className="rounded-[1.6rem] border border-slate-200 bg-white/80 p-3 shadow-[0_14px_32px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-4">
+        <button
+          type="button"
+          onClick={() => toggleSection(key)}
+          className="flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-left transition hover:bg-slate-50"
+          aria-expanded={expanded}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+            <ChevronIcon expanded={expanded} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-semibold text-slate-950">{title}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {users.length}
+              </span>
+            </div>
+          </div>
+        </button>
+
+        {expanded ? (
+          <div className="mt-3 border-t border-slate-200 px-1 pt-4">
+            {users.length === 0 ? (
+              renderEmptySection(`Nenhum usuário encontrado em ${title.toLowerCase()}.`)
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {users.map((user) => renderUserCard(user))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <>
       <section className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-600">
-            Heads com acesso ao InnovaCoin carregados do banco. Cadastre novos bônus
-            e edite os registros sem sair desta tela.
+            Os usuários foram separados em duas pastas recolhíveis, como no explorador do
+            VS Code. Clique na seta para abrir cada grupo.
           </p>
         </div>
       </section>
 
       {heads.length === 0 ? (
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-950">
-            Nenhum head encontrado
-          </h2>
+          <h2 className="text-xl font-semibold text-slate-950">Nenhum usuário encontrado</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Quando houver usuários com plataforma Innovacoin e role Head, eles aparecerão aqui.
+            Quando houver usuários cadastrados, eles aparecerão aqui.
           </p>
         </section>
       ) : (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {heads.map((head) => {
-            const ready = head.status === "released";
-            const waitingFirstDeposit = head.status === "awaiting_deposit";
-            const { firstName, lastName } = splitHeadName(head.name);
-
-            return (
-              <article
-                key={head.id}
-                className="relative overflow-hidden rounded-[1.75rem] border border-[#d7e6ff]/38 bg-[linear-gradient(145deg,rgba(244,248,255,0.72),rgba(202,215,238,0.42))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),inset_0_-1px_0_rgba(130,151,189,0.16),0_16px_36px_rgba(43,58,92,0.12)] ring-1 ring-white/30 backdrop-blur-md"
-              >
-                <div className="absolute inset-x-5 top-0 h-px bg-white/92" />
-                <div className="absolute left-4 top-4 h-10 w-10 rounded-full bg-white/28 blur-2xl" />
-                <div className="absolute -right-10 -top-8 h-28 w-28 rounded-full bg-[#dce8ff]/28 blur-3xl" />
-                <div className="absolute -bottom-12 left-2 h-28 w-28 rounded-full bg-[#6f87b7]/12 blur-3xl" />
-
-                <div className="relative flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 items-start gap-3 pr-3">
-                    <UserAvatar
-                      name={head.name}
-                      photoUrl={head.photoUrl}
-                      size="md"
-                      className="border-cyan-400/40 text-cyan-700"
-                    />
-                    <div className="min-w-0">
-                      <h2 className="text-lg font-semibold leading-5 text-slate-950">
-                        <span className="block truncate">{firstName}</span>
-                        {lastName ? (
-                          <span className="mt-0.5 block truncate">{lastName}</span>
-                        ) : null}
-                      </h2>
-                      <p className="mt-1 truncate text-sm text-slate-500">{head.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2 self-start">
-                    <span
-                      className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                        ready
-                          ? "bg-emerald-300/30 text-emerald-800"
-                          : waitingFirstDeposit
-                            ? "bg-slate-300/35 text-slate-700"
-                            : "bg-amber-300/30 text-amber-800"
-                      }`}
-                    >
-                      {ready
-                        ? "Liberado"
-                        : waitingFirstDeposit
-                          ? "Sem depósito"
-                          : "Pendente"}
-                    </span>
-                    <Link
-                      href={`/admin/heads/${head.userId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-500/10 text-cyan-700 transition hover:bg-cyan-500/20 hover:text-cyan-800"
-                      aria-label={`Visualizar painel de ${head.name}`}
-                    >
-                      <EyeIcon />
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="relative mt-5 space-y-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">
-                      Acumulado
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-950">
-                      {formatCurrencyBRL(head.pendingBalance)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">
-                      Caju liberado
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-emerald-700">
-                      {formatCurrencyBRL(head.cajuBalance)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">
-                      Tempo restante
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-slate-700">
-                      {ready ? "Disponível agora" : head.remainingTimeLabel}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="relative mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                  <button
-                    type="button"
-                    onClick={() => openCreateBonusModal(head)}
-                    className="inline-flex w-full justify-center rounded-2xl border border-[#08c9a5]/30 bg-[#08c9a5] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#07b694] sm:min-w-[150px]"
-                  >
-                    Cadastrar bônus
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openManageBonusModal(head)}
-                    className="inline-flex w-full justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 sm:min-w-[150px]"
-                  >
-                    Editar bônus
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+        <section className="space-y-4">
+          {renderSection(
+            "heads",
+            "Heads",
+            headUsers,
+          )}
+          {renderSection(
+            "staff",
+            "Colaboradores",
+            staffUsers,
+          )}
         </section>
       )}
 
@@ -472,7 +554,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
                   {!isLoadingManage && manageInstallments.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-6 text-center text-slate-300">
-                        Nenhum bônus cadastrado para este head.
+                        Nenhum bônus cadastrado para este usuário.
                       </td>
                     </tr>
                   ) : null}
@@ -556,9 +638,7 @@ export default function AdminForm({ heads }: AdminFormProps) {
 
             <div className="mt-4 grid gap-3">
               <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">
-                  Valor acumulado
-                </span>
+                <span className="text-sm font-medium text-slate-200">Valor acumulado</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -584,31 +664,25 @@ export default function AdminForm({ heads }: AdminFormProps) {
                   placeholder="R$ 0,00"
                   value={bonusModal.cajuAmount}
                   onChange={(event) =>
-                    updateBonusModal(
-                      "cajuAmount",
-                      formatBRLCurrencyInput(event.target.value),
-                    )
+                    updateBonusModal("cajuAmount", formatBRLCurrencyInput(event.target.value))
                   }
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right text-sm tabular-nums text-white outline-none transition placeholder:text-right focus:border-cyan-300/50"
                 />
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">
-                  Data real do depósito
-                </span>
+                <span className="text-sm font-medium text-slate-200">Data real do depósito</span>
                 <input
                   type="date"
                   value={bonusModal.depositDate}
-                  onChange={(event) =>
-                    updateBonusModal("depositDate", event.target.value)
-                  }
+                  onChange={(event) => updateBonusModal("depositDate", event.target.value)}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
                 />
               </label>
 
               <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-                O valor acumulado entra no ciclo de 5 anos. O valor do Caju fica liberado para uso imediato.
+                O valor acumulado entra no ciclo de 5 anos. O valor do Caju fica liberado
+                para uso imediato.
               </div>
 
               {bonusFeedback ? (
