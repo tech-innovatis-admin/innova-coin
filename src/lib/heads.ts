@@ -14,7 +14,7 @@ export type DashboardUser = {
   id: string;
   name: string;
   email: string;
-  role: "user";
+  userType: "head" | "collaborator";
   photoUrl: string | null;
   pendingBalance: number;
   cajuBalance: number;
@@ -32,7 +32,7 @@ export type HeadAccount = {
   userId: string;
   name: string;
   email: string;
-  isHead: boolean;
+  userType: "head" | "collaborator";
   photoUrl: string | null;
   pendingBalance: number;
   cajuBalance: number;
@@ -60,6 +60,20 @@ type UserSummaryRow = {
   first_deposit_date: string | Date | null;
   installment_count: string | number | null;
 };
+
+function resolveInnovaUserType(roles: string[] | null | undefined) {
+  const normalizedRoles = roles?.map((role) => role.trim().toLowerCase()).filter(Boolean) ?? [];
+
+  if (normalizedRoles.includes("head")) {
+    return "head" as const;
+  }
+
+  if (normalizedRoles.includes("colaborador")) {
+    return "collaborator" as const;
+  }
+
+  return null;
+}
 
 function toIsoString(value: string | Date) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -107,15 +121,14 @@ function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> 
   const { availableAt, remainingTimeLabel, status } = deriveAvailability(
     row.first_deposit_date,
   );
-  const normalizedRoles =
-    row.innovacoin_roles?.map((role) => role.trim().toLowerCase()).filter(Boolean) ?? [];
+  const userType = resolveInnovaUserType(row.innovacoin_roles) ?? "collaborator";
 
   return {
     id: String(row.id),
     userId: String(row.id),
     name: normalizeDisplayName(row),
     email: normalizeEmail(row),
-    isHead: normalizedRoles.includes("head"),
+    userType,
     photoUrl: row.photo,
     pendingBalance: Number(row.pending_balance ?? 0),
     cajuBalance: Number(row.caju_balance ?? 0),
@@ -187,10 +200,12 @@ export async function getHeadSummaries() {
     `,
   );
 
-  return result.rows.map((row) => ({
-    ...mapHeadSummary(row),
-    installments: [],
-  }));
+  return result.rows
+    .filter((row) => resolveInnovaUserType(row.innovacoin_roles) !== null)
+    .map((row) => ({
+      ...mapHeadSummary(row),
+      installments: [],
+    }));
 }
 
 export async function getDashboardUserById(
@@ -258,12 +273,17 @@ export async function getDashboardUserById(
     user.first_deposit_date,
   );
   const installmentCount = Number(user.installment_count ?? 0);
+  const userType = resolveInnovaUserType(user.innovacoin_roles);
+
+  if (!userType) {
+    return null;
+  }
 
   return {
     id: String(user.id),
     name: normalizeDisplayName(user),
     email: normalizeEmail(user),
-    role: "user",
+    userType,
     photoUrl: user.photo,
     pendingBalance: Number(user.pending_balance ?? 0),
     cajuBalance: Number(user.caju_balance ?? 0),

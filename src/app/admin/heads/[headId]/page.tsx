@@ -11,7 +11,7 @@ type AdminHeadPageProps = {
 };
 
 export const metadata = {
-  title: "Visualização do HEAD",
+  title: "Visualização do usuário",
   description: "",
 };
 
