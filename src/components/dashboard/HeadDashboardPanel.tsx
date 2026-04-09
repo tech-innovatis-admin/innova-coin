@@ -13,9 +13,11 @@ const PIG_SEGMENT_COUNT = 20;
 function SavingsPig({
   targetFilledSegments,
   hasInstallments,
+  showFiveYearBadge,
 }: {
   targetFilledSegments: number;
   hasInstallments: boolean;
+  showFiveYearBadge: boolean;
 }) {
   const [animatedSegments, setAnimatedSegments] = useState(0);
   const radius = 145;
@@ -53,9 +55,11 @@ function SavingsPig({
     <div className="flex w-full justify-center">
       <div className="group relative flex h-full w-full flex-col items-center rounded-[2rem] border border-white/72 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(239,246,255,0.90)_48%,rgba(219,234,254,0.78)_100%)] px-5 py-5 shadow-[0_26px_68px_rgba(15,23,42,0.14)] ring-1 ring-cyan-100/80 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_34px_84px_rgba(15,23,42,0.18)] sm:min-h-[390px] sm:px-6 sm:py-6 xl:min-h-[420px] xl:py-7">
         <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
-        <div className="relative rounded-full border border-cyan-200/70 bg-white/84 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-800 shadow-[0_12px_24px_rgba(14,116,144,0.08)] backdrop-blur-sm sm:text-[11px]">
-          Jornada de 5 anos
-        </div>
+        {showFiveYearBadge ? (
+          <div className="relative rounded-full border border-cyan-200/70 bg-white/84 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-800 shadow-[0_12px_24px_rgba(14,116,144,0.08)] backdrop-blur-sm sm:text-[11px]">
+            Jornada de 5 anos
+          </div>
+        ) : null}
         <div className="relative flex min-h-[230px] w-full flex-1 items-center justify-center py-3 sm:min-h-[250px] sm:py-4 xl:min-h-[300px]">
           <svg
             viewBox="0 0 360 360"
@@ -122,7 +126,7 @@ type HeadDashboardPanelProps = {
 export default function HeadDashboardPanel({
   user,
   heading = `Olá, ${user.name}`,
-  intro = "Acompanhe a evolução do seu bônus ao longo do ciclo de 5 anos e veja quando o saldo estará pronto para resgate.",
+  intro = "Acompanhe a evolução do seu porquinho ao longo do ciclo de 5 anos e veja quando o saldo estará pronto para resgate.",
 }: HeadDashboardPanelProps) {
   const hasInstallments = user.installments.some(
     (installment) => installment.accumulatedAmount > 0,
@@ -148,9 +152,11 @@ export default function HeadDashboardPanel({
             {intro}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="rounded-full border border-white/80 bg-white/[0.82] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-[0_10px_22px_rgba(148,163,184,0.10)]">
-              Horizonte de 5 anos
-            </span>
+            {user.userType === "head" ? (
+              <span className="rounded-full border border-white/80 bg-white/[0.82] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-[0_10px_22px_rgba(148,163,184,0.10)]">
+                Horizonte de 5 anos
+              </span>
+            ) : null}
             <span className="rounded-full border border-emerald-200/80 bg-emerald-50/[0.90] px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-[0_10px_22px_rgba(16,185,129,0.10)]">
               {hasInstallments
                 ? `${cycleProgressPercent}% do ciclo concluído`
@@ -218,14 +224,17 @@ export default function HeadDashboardPanel({
         <SavingsPig
           targetFilledSegments={user.filledPigSegments}
           hasInstallments={hasInstallments}
+          showFiveYearBadge={user.userType === "head"}
         />
         <StatementCard installments={user.installments} />
       </div>
 
-      <CajuStatementCard
-        installments={user.installments}
-        cajuBalance={user.cajuBalance}
-      />
+      {user.userType === "head" ? (
+        <CajuStatementCard
+          installments={user.installments}
+          cajuBalance={user.cajuBalance}
+        />
+      ) : null}
     </section>
   );
 }

@@ -5,6 +5,7 @@ export const HEAD_DASHBOARD_PATH = "/dashboard";
 const INNOVACOIN_PLATFORM = "innovacoin";
 const INNOVACOIN_ADMIN_ROLE = "admin";
 const INNOVACOIN_HEAD_ROLE = "head";
+const INNOVACOIN_COLLABORATOR_ROLE = "colaborador";
 
 export type PlatformAccessUser = {
   id: string;
@@ -34,16 +35,28 @@ export function isInnovacoinHeadRole(roles: string[] | null | undefined) {
   return normalizeList(roles).includes(INNOVACOIN_HEAD_ROLE);
 }
 
+export function isInnovacoinCollaboratorRole(roles: string[] | null | undefined) {
+  return normalizeList(roles).includes(INNOVACOIN_COLLABORATOR_ROLE);
+}
+
 export function isPlatformAdminUser(user: PlatformAccessUser) {
-  return hasInnovacoinPlatform(user) && isInnovacoinAdminRole(user.innovacoinRoles);
+  return isInnovacoinAdminRole(user.innovacoinRoles);
 }
 
 export function isPlatformHeadUser(user: PlatformAccessUser) {
-  return hasInnovacoinPlatform(user) && isInnovacoinHeadRole(user.innovacoinRoles);
+  return isInnovacoinHeadRole(user.innovacoinRoles);
+}
+
+export function isPlatformCollaboratorUser(user: PlatformAccessUser) {
+  return isInnovacoinCollaboratorRole(user.innovacoinRoles);
+}
+
+export function isPlatformDashboardUser(user: PlatformAccessUser) {
+  return isPlatformHeadUser(user) || isPlatformCollaboratorUser(user);
 }
 
 export function hasPlatformAccess(user: PlatformAccessUser) {
-  return Boolean(user.id?.trim());
+  return isPlatformAdminUser(user) || isPlatformDashboardUser(user);
 }
 
 export function isSafePostLoginPath(pathname: string | null | undefined) {
@@ -74,7 +87,7 @@ export function getPostLoginPath(user: PlatformAccessUser) {
     return ADMIN_HOME_PATH;
   }
 
-  if (hasPlatformAccess(user)) {
+  if (isPlatformDashboardUser(user)) {
     return HEAD_DASHBOARD_PATH;
   }
 
@@ -100,10 +113,18 @@ export function getRedirectTargetForPathname(
   }
 
   if (isAdminPath(pathname) && !isPlatformAdminUser(user)) {
-    return HEAD_DASHBOARD_PATH;
+    return isPlatformDashboardUser(user) ? HEAD_DASHBOARD_PATH : LOGIN_PATH;
   }
 
-  if (isHeadPath(pathname) && !hasPlatformAccess(user)) {
+  if (isHeadPath(pathname)) {
+    if (isPlatformDashboardUser(user)) {
+      return null;
+    }
+
+    if (isPlatformAdminUser(user)) {
+      return ADMIN_HOME_PATH;
+    }
+
     return LOGIN_PATH;
   }
 
