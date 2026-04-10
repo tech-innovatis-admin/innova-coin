@@ -2,6 +2,11 @@ import { getDbPool } from "@/lib/db";
 import { getRemainingTime } from "@/lib/formatters";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
+export type InnovaUserType = "head" | "collaborator";
+
+const HEAD_PIG_SEGMENT_COUNT = 20;
+const COLLABORATOR_PIG_SEGMENT_COUNT = 4;
+const COLLABORATOR_WITHDRAW_DATE = new Date(2026, 11, 31, 0, 0, 0, 0).toISOString();
 
 export type InstallmentEntry = {
   id: string;
@@ -14,7 +19,7 @@ export type DashboardUser = {
   id: string;
   name: string;
   email: string;
-  userType: "head" | "collaborator";
+  userType: InnovaUserType;
   photoUrl: string | null;
   pendingBalance: number;
   cajuBalance: number;
@@ -32,7 +37,7 @@ export type HeadAccount = {
   userId: string;
   name: string;
   email: string;
-  userType: "head" | "collaborator";
+  userType: InnovaUserType;
   photoUrl: string | null;
   pendingBalance: number;
   cajuBalance: number;
@@ -85,17 +90,24 @@ function addYears(value: string | Date, years: number) {
   return nextDate.toISOString();
 }
 
-function deriveAvailability(firstDepositDate: string | Date | null) {
+function deriveAvailability(
+  firstDepositDate: string | Date | null,
+  userType: InnovaUserType,
+) {
   if (!firstDepositDate) {
     return {
       availableAt: null,
-      remainingTimeLabel: "Aguardando primeira parcela",
+      remainingTimeLabel:
+        userType === "head"
+          ? "Aguardando primeira parcela"
+          : "Aguardando o primeiro bonus trimestral",
       status: "awaiting_deposit" as const,
     };
   }
 
   const referenceTime = Date.now();
-  const availableAt = addYears(firstDepositDate, 5);
+  const availableAt =
+    userType === "head" ? addYears(firstDepositDate, 5) : COLLABORATOR_WITHDRAW_DATE;
   const status: WithdrawStatus =
     new Date(availableAt).getTime() <= referenceTime ? "released" : "pending";
   const remainingTimeLabel = getRemainingTime(availableAt, referenceTime);
@@ -103,8 +115,18 @@ function deriveAvailability(firstDepositDate: string | Date | null) {
   return { availableAt, remainingTimeLabel, status };
 }
 
-function getFilledPigSegments(installmentCount: number) {
-  return Math.min(Math.max(installmentCount, 0), 20);
+export function getPigSegmentCountByUserType(userType: InnovaUserType) {
+  return userType === "head" ? HEAD_PIG_SEGMENT_COUNT : COLLABORATOR_PIG_SEGMENT_COUNT;
+}
+
+function getFilledPigSegments(
+  installmentCount: number,
+  userType: InnovaUserType,
+) {
+  return Math.min(
+    Math.max(installmentCount, 0),
+    getPigSegmentCountByUserType(userType),
+  );
 }
 
 function normalizeDisplayName(
@@ -118,10 +140,11 @@ function normalizeEmail(row: Pick<UserSummaryRow, "email" | "username">) {
 }
 
 function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> {
+  const userType = resolveInnovaUserType(row.innovacoin_roles) ?? "collaborator";
   const { availableAt, remainingTimeLabel, status } = deriveAvailability(
     row.first_deposit_date,
+    userType,
   );
-  const userType = resolveInnovaUserType(row.innovacoin_roles) ?? "collaborator";
 
   return {
     id: String(row.id),
@@ -269,15 +292,17 @@ export async function getDashboardUserById(
     return null;
   }
 
-  const { availableAt, remainingTimeLabel, status } = deriveAvailability(
-    user.first_deposit_date,
-  );
   const installmentCount = Number(user.installment_count ?? 0);
   const userType = resolveInnovaUserType(user.innovacoin_roles);
 
   if (!userType) {
     return null;
   }
+
+  const { availableAt, remainingTimeLabel, status } = deriveAvailability(
+    user.first_deposit_date,
+    userType,
+  );
 
   return {
     id: String(user.id),
@@ -296,7 +321,7 @@ export async function getDashboardUserById(
     installments,
     availableAt,
     remainingTimeLabel,
-    filledPigSegments: getFilledPigSegments(installmentCount),
+    filledPigSegments: getFilledPigSegments(installmentCount, userType),
     status,
   } satisfies DashboardUser;
 }

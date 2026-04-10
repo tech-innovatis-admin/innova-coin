@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { formatCurrencyBRL } from "@/lib/formatters";
+import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
 import type { HeadAccount } from "@/lib/heads";
 import UserAvatar from "../shared/UserAvatar";
 
@@ -46,7 +46,13 @@ function EyeIcon() {
 
 function renderUserCard(user: HeadAccount) {
   const ready = user.status === "released";
-  const userTypeLabel = user.userType === "head" ? "Head" : "Colaborador";
+  const isHead = user.userType === "head";
+  const userTypeLabel = isHead ? "Head" : "Colaborador";
+  const timingLabel = isHead ? "Tempo restante" : "Resgate do porquinho";
+  const timingHint =
+    !isHead && user.availableAt
+      ? `Saque previsto em ${formatDateBR(user.availableAt)}`
+      : null;
   const { firstName, lastName } = splitUserName(user.name);
 
   return (
@@ -102,7 +108,7 @@ function renderUserCard(user: HeadAccount) {
           </p>
         </div>
 
-        {user.userType === "head" ? (
+        {isHead ? (
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Caju liberado</p>
             <p className="mt-1 text-lg font-semibold text-emerald-700">
@@ -112,10 +118,13 @@ function renderUserCard(user: HeadAccount) {
         ) : null}
 
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Tempo restante</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">{timingLabel}</p>
           <p className="mt-1 text-sm font-medium text-slate-700">
             {ready ? "Disponivel agora" : user.remainingTimeLabel}
           </p>
+          {timingHint ? (
+            <p className="mt-1 text-xs text-slate-500">{timingHint}</p>
+          ) : null}
         </div>
       </div>
     </article>
@@ -162,16 +171,16 @@ export default function AdminForm({ heads }: AdminFormProps) {
       <section className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm text-slate-600">
-            Os valores mostrados aqui são somente leitura e vêm da planilha integrada.
+            Os valores mostrados aqui sao somente leitura e vem da planilha integrada.
           </p>
         </div>
       </section>
 
       {heads.length === 0 ? (
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-950">Nenhum usuário encontrado</h2>
+          <h2 className="text-xl font-semibold text-slate-950">Nenhum usuario encontrado</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Quando houver usuários na planilha, eles aparecerão aqui.
+            Quando houver usuarios na planilha, eles aparecerao aqui.
           </p>
         </section>
       ) : (

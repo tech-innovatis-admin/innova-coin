@@ -6,11 +6,13 @@ import type { NextResponse } from "next/server";
 import { getDbPool } from "@/lib/db";
 import {
   ADMIN_HOME_PATH,
+  FIRST_ACCESS_PATH,
   getPostLoginPath,
   getRedirectTargetForPathname,
   LOGIN_PATH,
   HEAD_DASHBOARD_PATH,
 } from "@/lib/platformAccess";
+import { getPasswordPolicyErrors } from "@/lib/passwordPolicy";
 import {
   createSessionToken as createSignedSessionToken,
   readSessionPayload,
@@ -29,9 +31,15 @@ type UserRow = {
   hash: string | null;
   platforms: string[] | null;
   innovacoin_roles: string[] | null;
+  must_change_password: boolean | null;
 };
 
 type SessionUserRow = Omit<UserRow, "hash">;
+
+type UserPasswordRow = {
+  id: string | number;
+  hash: string | null;
+};
 
 type SessionCookieOptions = {
   httpOnly: true;
@@ -52,6 +60,22 @@ export type LoginAttemptResult =
       redirectTo: string;
       user: SessionUser;
     };
+
+export type ChangePasswordAttemptResult =
+  | {
+      success: false;
+      status: number;
+      error: string;
+    }
+  | {
+      success: true;
+      redirectTo: string;
+      user: SessionUser;
+    };
+
+type RequireAuthenticatedUserOptions = {
+  allowMustChangePassword?: boolean;
+};
 
 function isLocalHost(host: string) {
   const trimmedHost = host.trim().toLowerCase();
@@ -155,6 +179,7 @@ function mapSessionUser(row: SessionUserRow): SessionUser {
     photo: row.photo,
     platforms: row.platforms ?? [],
     innovacoinRoles: row.innovacoin_roles ?? [],
+    mustChangePassword: row.must_change_password === true,
   } satisfies SessionUser;
 }
 
@@ -173,6 +198,7 @@ async function getUserSnapshotById(userId: string) {
         username,
         name,
         photo,
+        coalesce(must_change_password, false) as must_change_password,
         coalesce(platforms, array[]::varchar[]) as platforms,
         coalesce(innovacoin_roles, array[]::varchar[]) as innovacoin_roles
       from public.users
@@ -189,6 +215,27 @@ async function getUserSnapshotById(userId: string) {
   }
 
   return mapSessionUser(user);
+}
+
+async function getUserPasswordRowById(userId: string) {
+  if (!/^\d+$/.test(userId.trim())) {
+    return null;
+  }
+
+  const pool = getDbPool();
+  const result = await pool.query<UserPasswordRow>(
+    `
+      select
+        id,
+        hash
+      from public.users
+      where id = $1::bigint
+      limit 1
+    `,
+    [userId],
+  );
+
+  return result.rows[0] ?? null;
 }
 
 export async function authenticateUser(identifier: string, password: string) {
@@ -209,6 +256,7 @@ export async function authenticateUser(identifier: string, password: string) {
         name,
         photo,
         hash,
+        coalesce(must_change_password, false) as must_change_password,
         coalesce(platforms, array[]::varchar[]) as platforms,
         coalesce(innovacoin_roles, array[]::varchar[]) as innovacoin_roles
       from public.users
@@ -276,6 +324,105 @@ export async function validateLoginAttempt(
   };
 }
 
+export async function changeUserPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordAttemptResult> {
+  const normalizedUserId = userId.trim();
+  const normalizedCurrentPassword = currentPassword;
+  const normalizedNewPassword = newPassword;
+
+  if (!normalizedUserId) {
+    return {
+      success: false,
+      status: 401,
+      error: "Sessao invalida. Faca login novamente.",
+    };
+  }
+
+  if (!normalizedCurrentPassword || !normalizedNewPassword) {
+    return {
+      success: false,
+      status: 400,
+      error: "Informe a senha atual e a nova senha.",
+    };
+  }
+
+  if (normalizedCurrentPassword === normalizedNewPassword) {
+    return {
+      success: false,
+      status: 400,
+      error: "A nova senha deve ser diferente da senha atual.",
+    };
+  }
+
+  const passwordErrors = getPasswordPolicyErrors(normalizedNewPassword);
+
+  if (passwordErrors.length > 0) {
+    return {
+      success: false,
+      status: 400,
+      error: passwordErrors[0],
+    };
+  }
+
+  const userPasswordRow = await getUserPasswordRowById(normalizedUserId);
+
+  if (!userPasswordRow?.hash) {
+    return {
+      success: false,
+      status: 401,
+      error: "Sessao invalida. Faca login novamente.",
+    };
+  }
+
+  const passwordMatches = await bcrypt.compare(
+    normalizedCurrentPassword,
+    userPasswordRow.hash,
+  );
+
+  if (!passwordMatches) {
+    return {
+      success: false,
+      status: 400,
+      error: "A senha atual esta incorreta.",
+    };
+  }
+
+  const nextHash = await bcrypt.hash(normalizedNewPassword, 12);
+  const pool = getDbPool();
+
+  await pool.query(
+    `
+      update public.users
+      set
+        hash = $2,
+        must_change_password = false,
+        password_changed_at = now(),
+        updated_at = now()
+      where id = $1::bigint
+    `,
+    [normalizedUserId, nextHash],
+  );
+
+  const updatedUser = await getUserSnapshotById(normalizedUserId);
+
+  if (!updatedUser) {
+    return {
+      success: false,
+      status: 500,
+      error: "Nao foi possivel atualizar a sessao do usuario.",
+    };
+  }
+
+  return {
+    success: true,
+    redirectTo: getPostLoginPath(updatedUser) ?? LOGIN_PATH,
+    user: updatedUser,
+  };
+}
+
 export async function createSession(user: SessionUser) {
   const cookieStore = await cookies();
   const session = await createSignedSessionToken(user);
@@ -296,6 +443,7 @@ export async function createSession(user: SessionUser) {
     secure: options.secure,
     platforms: user.platforms,
     innovacoinRoles: user.innovacoinRoles,
+    mustChangePassword: user.mustChangePassword,
   });
 }
 
@@ -324,6 +472,7 @@ export async function setSessionCookie(
     secure: options.secure,
     platforms: user.platforms,
     innovacoinRoles: user.innovacoinRoles,
+    mustChangePassword: user.mustChangePassword,
   });
 }
 
@@ -378,6 +527,7 @@ export async function getSessionUser() {
         userId: latestUser.id,
         platforms: latestUser.platforms,
         innovacoinRoles: latestUser.innovacoinRoles,
+        mustChangePassword: latestUser.mustChangePassword,
       });
       return null;
     }
@@ -387,6 +537,7 @@ export async function getSessionUser() {
       source: tokenFromCookie ? "cookie" : "authorization-header",
       platforms: latestUser.platforms,
       innovacoinRoles: latestUser.innovacoinRoles,
+      mustChangePassword: latestUser.mustChangePassword,
     });
     return latestUser;
   } catch {
@@ -395,11 +546,17 @@ export async function getSessionUser() {
   }
 }
 
-export async function requireAuthenticatedUser() {
+export async function requireAuthenticatedUser(
+  options: RequireAuthenticatedUserOptions = {},
+) {
   const user = await getSessionUser();
 
   if (!user) {
     redirect(LOGIN_PATH);
+  }
+
+  if (user.mustChangePassword && !options.allowMustChangePassword) {
+    redirect(FIRST_ACCESS_PATH);
   }
 
   return user;

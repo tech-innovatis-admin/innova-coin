@@ -3,33 +3,42 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { formatCurrencyBRL } from "@/lib/formatters";
-import { type DashboardUser } from "@/lib/heads";
+import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
+import type { DashboardUser } from "@/lib/heads";
 import CajuStatementCard from "./CajuStatementCard";
 import StatementCard from "./StatementCard";
 
-const PIG_SEGMENT_COUNT = 20;
+function getPigSegmentCountByUserType(userType: DashboardUser["userType"]) {
+  return userType === "head" ? 20 : 4;
+}
 
 function SavingsPig({
   targetFilledSegments,
+  totalSegments,
   hasInstallments,
-  showFiveYearBadge,
+  cycleBadgeLabel,
+  activeCycleMessage,
+  emptyCycleMessage,
 }: {
   targetFilledSegments: number;
+  totalSegments: number;
   hasInstallments: boolean;
-  showFiveYearBadge: boolean;
+  cycleBadgeLabel?: string;
+  activeCycleMessage: string;
+  emptyCycleMessage: string;
 }) {
   const [animatedSegments, setAnimatedSegments] = useState(0);
   const radius = 145;
   const circumference = 2 * Math.PI * radius;
+  const safeTotalSegments = Math.max(totalSegments, 1);
   const safeTargetFilledSegments = Math.min(
     Math.max(targetFilledSegments, 0),
-    PIG_SEGMENT_COUNT,
+    safeTotalSegments,
   );
   const cycleProgressPercent = Math.round(
-    (safeTargetFilledSegments / PIG_SEGMENT_COUNT) * 100,
+    (safeTargetFilledSegments / safeTotalSegments) * 100,
   );
-  const progress = animatedSegments / PIG_SEGMENT_COUNT;
+  const progress = animatedSegments / safeTotalSegments;
   const progressOffset = circumference * (1 - progress);
 
   useEffect(() => {
@@ -55,9 +64,9 @@ function SavingsPig({
     <div className="flex w-full justify-center">
       <div className="group relative flex h-full w-full flex-col items-center rounded-[2rem] border border-white/72 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(239,246,255,0.90)_48%,rgba(219,234,254,0.78)_100%)] px-5 py-5 shadow-[0_26px_68px_rgba(15,23,42,0.14)] ring-1 ring-cyan-100/80 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_34px_84px_rgba(15,23,42,0.18)] sm:min-h-[390px] sm:px-6 sm:py-6 xl:min-h-[420px] xl:py-7">
         <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.85),transparent_60%)]" />
-        {showFiveYearBadge ? (
+        {cycleBadgeLabel ? (
           <div className="relative rounded-full border border-cyan-200/70 bg-white/84 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-800 shadow-[0_12px_24px_rgba(14,116,144,0.08)] backdrop-blur-sm sm:text-[11px]">
-            Jornada de 5 anos
+            {cycleBadgeLabel}
           </div>
         ) : null}
         <div className="relative flex min-h-[230px] w-full flex-1 items-center justify-center py-3 sm:min-h-[250px] sm:py-4 xl:min-h-[300px]">
@@ -103,12 +112,10 @@ function SavingsPig({
         <div className="relative mt-auto w-full rounded-[1.15rem] border border-white/75 bg-white/[0.8] px-4 py-4 shadow-[0_16px_30px_rgba(148,163,184,0.16)] backdrop-blur-sm">
           <div className="flex items-center justify-between gap-4 text-[11px] font-medium text-slate-500 sm:text-xs">
             <span className="max-w-[220px] leading-4">
-              {hasInstallments
-                ? "Crescimento patrimonial em acumulação"
-                : "Aguardando o primeiro aporte do ciclo"}
+              {hasInstallments ? activeCycleMessage : emptyCycleMessage}
             </span>
             <span className="shrink-0 font-semibold text-slate-700">
-              {hasInstallments ? `${cycleProgressPercent}% concluído` : "0%"}
+              {hasInstallments ? `${cycleProgressPercent}% concluido` : "0%"}
             </span>
           </div>
         </div>
@@ -123,19 +130,64 @@ type HeadDashboardPanelProps = {
   intro?: string;
 };
 
+function getDefaultIntro(user: DashboardUser) {
+  if (user.userType === "head") {
+    return "Acompanhe a evolucao do seu porquinho ao longo do ciclo de 5 anos e veja quando o saldo estara pronto para resgate.";
+  }
+
+  return "Acompanhe os 4 bonus trimestrais do ano e veja quando o saldo do porquinho podera ser sacado no fechamento anual.";
+}
+
 export default function HeadDashboardPanel({
   user,
-  heading = `Olá, ${user.name}`,
-  intro = "Acompanhe a evolução do seu porquinho ao longo do ciclo de 5 anos e veja quando o saldo estará pronto para resgate.",
+  heading = `Ola, ${user.name}`,
+  intro,
 }: HeadDashboardPanelProps) {
+  const isHead = user.userType === "head";
+  const pigSegmentCount = getPigSegmentCountByUserType(user.userType);
   const hasInstallments = user.installments.some(
     (installment) => installment.accumulatedAmount > 0,
   );
+  const effectiveIntro = intro ?? getDefaultIntro(user);
   const cycleProgressPercent = Math.round(
-    (Math.min(Math.max(user.filledPigSegments, 0), PIG_SEGMENT_COUNT) /
-      PIG_SEGMENT_COUNT) *
+    (Math.min(Math.max(user.filledPigSegments, 0), pigSegmentCount) /
+      pigSegmentCount) *
       100,
   );
+  const releaseDateLabel = user.availableAt ? formatDateBR(user.availableAt) : null;
+  const horizonPillLabel = isHead
+    ? "Horizonte de 5 anos"
+    : releaseDateLabel
+      ? `Resgate em ${releaseDateLabel}`
+      : "Resgate anual";
+  const progressPillLabel = hasInstallments
+    ? `${cycleProgressPercent}% do ${isHead ? "ciclo" : "ano"} concluido`
+    : isHead
+      ? "O ciclo comeca com o primeiro aporte"
+      : "O ano comeca com o primeiro bonus";
+  const activeCycleMessage = isHead
+    ? "Crescimento patrimonial em acumulacao"
+    : "Bonus trimestrais acumulados para o resgate anual";
+  const emptyCycleMessage = isHead
+    ? "Aguardando o primeiro aporte do ciclo"
+    : "Aguardando o primeiro bonus do ano";
+  const balanceSupportMessage = hasInstallments
+    ? isHead
+      ? "Capital em acumulacao de longo prazo"
+      : "Bonus acumulados para saque no fechamento do ano"
+    : isHead
+      ? "Pronto para iniciar a jornada de acumulacao"
+      : "Pronto para iniciar o ciclo anual de bonus";
+  const maturationMessage = hasInstallments
+    ? isHead
+      ? "Maturacao do saldo em andamento"
+      : "Formacao do saldo anual em andamento"
+    : isHead
+      ? "Aguardando o primeiro aporte administrativo"
+      : "Aguardando o primeiro bonus trimestral";
+  const lastContributionLabel = isHead ? "Ultimo aporte" : "Ultimo bonus";
+  const statusLabel = isHead ? "Status do ciclo" : "Status do ano";
+  const cycleBadgeLabel = isHead ? "Jornada de 5 anos" : "Ciclo anual de 4 bonus";
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 sm:gap-6">
@@ -149,18 +201,14 @@ export default function HeadDashboardPanel({
             {heading}
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-            {intro}
+            {effectiveIntro}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            {user.userType === "head" ? (
-              <span className="rounded-full border border-white/80 bg-white/[0.82] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-[0_10px_22px_rgba(148,163,184,0.10)]">
-                Horizonte de 5 anos
-              </span>
-            ) : null}
+            <span className="rounded-full border border-white/80 bg-white/[0.82] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-[0_10px_22px_rgba(148,163,184,0.10)]">
+              {horizonPillLabel}
+            </span>
             <span className="rounded-full border border-emerald-200/80 bg-emerald-50/[0.90] px-3 py-1 text-[11px] font-semibold text-emerald-800 shadow-[0_10px_22px_rgba(16,185,129,0.10)]">
-              {hasInstallments
-                ? `${cycleProgressPercent}% do ciclo concluído`
-                : "O ciclo começa com o primeiro aporte"}
+              {progressPillLabel}
             </span>
           </div>
         </div>
@@ -175,7 +223,7 @@ export default function HeadDashboardPanel({
               {hasInstallments ? (
                 <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/[0.95] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-800 shadow-[0_16px_34px_rgba(16,185,129,0.14)] sm:text-[11px]">
                   <span className="block text-[9px] font-semibold tracking-[0.16em] text-emerald-700/80 sm:text-[10px]">
-                    Último aporte
+                    {lastContributionLabel}
                   </span>
                   <span className="mt-1 block text-sm tracking-normal text-emerald-900 sm:text-base">
                     + {formatCurrencyBRL(user.lastInstallment ?? 0)}
@@ -184,10 +232,10 @@ export default function HeadDashboardPanel({
               ) : (
                 <div className="rounded-2xl border border-slate-200/90 bg-slate-100/[0.96] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 shadow-[0_16px_34px_rgba(148,163,184,0.12)] sm:text-[11px]">
                   <span className="block text-[9px] tracking-[0.16em] text-slate-500 sm:text-[10px]">
-                    Status do ciclo
+                    {statusLabel}
                   </span>
                   <span className="mt-1 block text-sm tracking-normal text-slate-800 sm:text-base">
-                    Não iniciado
+                    Nao iniciado
                   </span>
                 </div>
               )}
@@ -196,9 +244,7 @@ export default function HeadDashboardPanel({
               {formatCurrencyBRL(user.pendingBalance)}
             </p>
             <p className="relative mt-2 max-w-[26rem] text-sm font-medium leading-6 text-slate-600">
-              {hasInstallments
-                ? "Capital em acumulação de longo prazo"
-                : "Pronto para iniciar a jornada de acumulação"}
+              {balanceSupportMessage}
             </p>
             <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-slate-200/80">
               <div
@@ -208,9 +254,7 @@ export default function HeadDashboardPanel({
             </div>
             <div className="relative mt-2 flex items-center justify-between gap-4 text-[11px] font-medium text-slate-500 sm:text-xs">
               <span className="max-w-[240px] leading-4">
-                {hasInstallments
-                  ? "Maturação do saldo em andamento"
-                  : "Aguardando o primeiro aporte administrativo"}
+                {maturationMessage}
               </span>
               <span className="font-semibold text-slate-700">
                 {hasInstallments ? `${cycleProgressPercent}%` : "0%"}
@@ -223,13 +267,16 @@ export default function HeadDashboardPanel({
       <div className="grid gap-5 sm:gap-6 xl:grid-cols-[minmax(380px,1.05fr)_minmax(420px,1.18fr)] xl:items-stretch">
         <SavingsPig
           targetFilledSegments={user.filledPigSegments}
+          totalSegments={pigSegmentCount}
           hasInstallments={hasInstallments}
-          showFiveYearBadge={user.userType === "head"}
+          cycleBadgeLabel={cycleBadgeLabel}
+          activeCycleMessage={activeCycleMessage}
+          emptyCycleMessage={emptyCycleMessage}
         />
-        <StatementCard installments={user.installments} />
+        <StatementCard installments={user.installments} userType={user.userType} />
       </div>
 
-      {user.userType === "head" ? (
+      {isHead ? (
         <CajuStatementCard
           installments={user.installments}
           cajuBalance={user.cajuBalance}

@@ -1,4 +1,5 @@
 export const LOGIN_PATH = "/login";
+export const FIRST_ACCESS_PATH = "/primeiro-acesso";
 export const ADMIN_HOME_PATH = "/admin";
 export const HEAD_DASHBOARD_PATH = "/dashboard";
 
@@ -11,6 +12,7 @@ export type PlatformAccessUser = {
   id: string;
   platforms?: string[] | null;
   innovacoinRoles?: string[] | null;
+  mustChangePassword?: boolean | null;
 };
 
 function normalizeValue(value: string | null | undefined) {
@@ -60,11 +62,19 @@ export function hasPlatformAccess(user: PlatformAccessUser) {
 }
 
 export function isSafePostLoginPath(pathname: string | null | undefined) {
-  return pathname === ADMIN_HOME_PATH || pathname === HEAD_DASHBOARD_PATH;
+  return (
+    pathname === FIRST_ACCESS_PATH ||
+    pathname === ADMIN_HOME_PATH ||
+    pathname === HEAD_DASHBOARD_PATH
+  );
 }
 
 export function isPublicEntryPath(pathname: string) {
   return pathname === "/" || pathname === LOGIN_PATH;
+}
+
+export function isFirstAccessPath(pathname: string) {
+  return pathname === FIRST_ACCESS_PATH;
 }
 
 export function isAdminPath(pathname: string) {
@@ -79,10 +89,10 @@ export function isHeadPath(pathname: string) {
 }
 
 export function isProtectedAppPath(pathname: string) {
-  return isAdminPath(pathname) || isHeadPath(pathname);
+  return isFirstAccessPath(pathname) || isAdminPath(pathname) || isHeadPath(pathname);
 }
 
-export function getPostLoginPath(user: PlatformAccessUser) {
+function getDefaultPostLoginPath(user: PlatformAccessUser) {
   if (isPlatformAdminUser(user)) {
     return ADMIN_HOME_PATH;
   }
@@ -92,6 +102,24 @@ export function getPostLoginPath(user: PlatformAccessUser) {
   }
 
   return null;
+}
+
+export function shouldForcePasswordChange(user: PlatformAccessUser | null | undefined) {
+  return user?.mustChangePassword === true;
+}
+
+export function getPostLoginPath(user: PlatformAccessUser) {
+  const defaultPostLoginPath = getDefaultPostLoginPath(user);
+
+  if (!defaultPostLoginPath) {
+    return null;
+  }
+
+  if (shouldForcePasswordChange(user)) {
+    return FIRST_ACCESS_PATH;
+  }
+
+  return defaultPostLoginPath;
 }
 
 export function getRedirectTargetForPathname(
@@ -108,7 +136,15 @@ export function getRedirectTargetForPathname(
     return isProtectedAppPath(pathname) ? LOGIN_PATH : null;
   }
 
+  if (shouldForcePasswordChange(user)) {
+    return isFirstAccessPath(pathname) ? null : FIRST_ACCESS_PATH;
+  }
+
   if (isPublicEntryPath(pathname)) {
+    return postLoginPath;
+  }
+
+  if (isFirstAccessPath(pathname)) {
     return postLoginPath;
   }
 
