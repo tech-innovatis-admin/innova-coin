@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
 import type { DashboardUser } from "@/lib/heads";
+import UserAvatar from "../shared/UserAvatar";
 import CajuStatementCard from "./CajuStatementCard";
 import StatementCard from "./StatementCard";
 
@@ -197,9 +198,17 @@ export default function HeadDashboardPanel({
           <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-700 sm:text-sm sm:tracking-[0.25em]">
             Veja seu saldo no Innova Coin
           </p>
-          <h1 className="text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[2.4rem] lg:text-4xl">
-            {heading}
-          </h1>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <UserAvatar
+              name={user.name}
+              photoUrl={user.photoUrl}
+              size="lg"
+              className="border-white/85 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.12)]"
+            />
+            <h1 className="min-w-0 truncate text-[1.7rem] font-semibold tracking-tight text-slate-950 sm:text-[2.4rem] lg:text-4xl">
+              {heading}
+            </h1>
+          </div>
           <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
             {effectiveIntro}
           </p>
