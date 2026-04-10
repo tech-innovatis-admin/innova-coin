@@ -24,6 +24,11 @@ export type SessionTokenUser = {
   mustChangePassword: boolean;
 };
 
+export type SessionTokenReadResult = {
+  user: SessionTokenUser;
+  hasMustChangePasswordClaim: boolean;
+};
+
 type SessionPayload = JWTPayload & {
   user: SessionTokenUser;
 };
@@ -44,6 +49,14 @@ function toSessionTokenUser(user: SessionUser): SessionTokenUser {
   };
 }
 
+function hasOwnProperty(value: unknown, propertyName: string) {
+  if (value == null) {
+    return false;
+  }
+
+  return Object.prototype.hasOwnProperty.call(value, propertyName);
+}
+
 function normalizeTokenArray(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -60,19 +73,41 @@ export async function createSessionToken(user: SessionUser) {
     .sign(getSessionSecret());
 }
 
+export async function createSessionTokenFromTokenUser(user: SessionTokenUser) {
+  return new SignJWT({ user })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(SESSION_DURATION)
+    .sign(getSessionSecret());
+}
+
 export async function readSessionPayload(token: string) {
   const { payload } = await jwtVerify(token, getSessionSecret());
   return payload as SessionPayload;
 }
 
-export async function readSessionUserFromToken(token: string) {
-  const payload = await readSessionPayload(token);
+function readSessionUserFromPayload(payload: SessionPayload): SessionTokenReadResult {
   const user = payload.user;
 
   return {
-    id: String(user?.id ?? ""),
-    platforms: normalizeTokenArray(user?.platforms),
-    innovacoinRoles: normalizeTokenArray(user?.innovacoinRoles),
-    mustChangePassword: user?.mustChangePassword === true,
+    user: {
+      id: String(user?.id ?? ""),
+      platforms: normalizeTokenArray(user?.platforms),
+      innovacoinRoles: normalizeTokenArray(user?.innovacoinRoles),
+      mustChangePassword: user?.mustChangePassword === true,
+    } satisfies SessionTokenUser,
+    hasMustChangePasswordClaim: hasOwnProperty(user, "mustChangePassword"),
+  };
+}
+
+export async function readSessionUserStateFromToken(token: string) {
+  const payload = await readSessionPayload(token);
+  return readSessionUserFromPayload(payload);
+}
+
+export async function readSessionUserFromToken(token: string) {
+  const sessionState = await readSessionUserStateFromToken(token);
+  return {
+    ...sessionState.user,
   } satisfies SessionTokenUser;
 }
