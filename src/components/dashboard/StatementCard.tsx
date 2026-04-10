@@ -56,14 +56,14 @@ export default function StatementCard({
   const isHead = userType === "head";
   const supportText = isHead
     ? "Parcelas que entram no saldo de resgate de 5 anos."
-    : "Os 4 bonus trimestrais que entram no saldo de resgate em 31/12/2026.";
+    : "Os 4 bônus trimestrais que entram no saldo de resgate em 31/12/2026.";
   const emptyTitle = isHead
     ? "Nenhuma parcela acumulada ainda."
-    : "Nenhum bonus trimestral acumulado ainda.";
+    : "Nenhum bônus trimestral acumulado ainda.";
   const emptyDescription = isHead
-    ? "Assim que o primeiro valor acumulado for registrado, ele aparecera aqui e comecara a compor o resgate futuro."
-    : "Assim que o primeiro bonus do ano for registrado, ele aparecera aqui e comecara a compor o resgate anual do colaborador.";
-  const installmentLabel = isHead ? "Parcela acumulada" : "Bonus acumulado";
+    ? "Assim que o primeiro valor acumulado for registrado, ele aparecerá aqui e começará a compor o resgate futuro."
+    : "Assim que o primeiro bônus do ano for registrado, ele aparecerá aqui e começará a compor o resgate anual do colaborador.";
+  const installmentLabel = isHead ? "Parcela acumulada" : "Bônus acumulado";
 
   return (
     <article
@@ -85,7 +85,7 @@ export default function StatementCard({
               Extrato do acumulado
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">
-              Movimentacoes
+              Movimentações
             </h2>
             <p className="mt-1 text-[13px] leading-4 text-slate-600 sm:text-sm">
               {supportText}

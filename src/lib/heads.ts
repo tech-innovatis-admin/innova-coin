@@ -99,8 +99,8 @@ function deriveAvailability(
       availableAt: null,
       remainingTimeLabel:
         userType === "head"
-          ? "Aguardando primeira parcela"
-          : "Aguardando o primeiro bonus trimestral",
+          ? "Aguardando a primeira parcela"
+          : "Aguardando o primeiro bônus trimestral",
       status: "awaiting_deposit" as const,
     };
   }

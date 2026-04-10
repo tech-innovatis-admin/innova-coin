@@ -115,7 +115,7 @@ function SavingsPig({
               {hasInstallments ? activeCycleMessage : emptyCycleMessage}
             </span>
             <span className="shrink-0 font-semibold text-slate-700">
-              {hasInstallments ? `${cycleProgressPercent}% concluido` : "0%"}
+              {hasInstallments ? `${cycleProgressPercent}% concluído` : "0%"}
             </span>
           </div>
         </div>
@@ -132,15 +132,15 @@ type HeadDashboardPanelProps = {
 
 function getDefaultIntro(user: DashboardUser) {
   if (user.userType === "head") {
-    return "Acompanhe a evolucao do seu porquinho ao longo do ciclo de 5 anos e veja quando o saldo estara pronto para resgate.";
+    return "Acompanhe a evolução do seu porquinho ao longo do ciclo de 5 anos e veja quando o saldo estará pronto para resgate.";
   }
 
-  return "Acompanhe os 4 bonus trimestrais do ano e veja quando o saldo do porquinho podera ser sacado no fechamento anual.";
+  return "Acompanhe os 4 bônus trimestrais do ano e veja quando o saldo do porquinho poderá ser sacado no fechamento anual.";
 }
 
 export default function HeadDashboardPanel({
   user,
-  heading = `Ola, ${user.name}`,
+  heading = `Olá, ${user.name}`,
   intro,
 }: HeadDashboardPanelProps) {
   const isHead = user.userType === "head";
@@ -161,33 +161,33 @@ export default function HeadDashboardPanel({
       ? `Resgate em ${releaseDateLabel}`
       : "Resgate anual";
   const progressPillLabel = hasInstallments
-    ? `${cycleProgressPercent}% do ${isHead ? "ciclo" : "ano"} concluido`
+    ? `${cycleProgressPercent}% do ${isHead ? "ciclo" : "ano"} concluído`
     : isHead
-      ? "O ciclo comeca com o primeiro aporte"
-      : "O ano comeca com o primeiro bonus";
+      ? "O ciclo começa com o primeiro aporte"
+      : "O ano começa com o primeiro bônus";
   const activeCycleMessage = isHead
-    ? "Crescimento patrimonial em acumulacao"
-    : "Bonus trimestrais acumulados para o resgate anual";
+    ? "Crescimento patrimonial em acumulação"
+    : "Bônus trimestrais acumulados para o resgate anual";
   const emptyCycleMessage = isHead
     ? "Aguardando o primeiro aporte do ciclo"
-    : "Aguardando o primeiro bonus do ano";
+    : "Aguardando o primeiro bônus do ano";
   const balanceSupportMessage = hasInstallments
     ? isHead
-      ? "Capital em acumulacao de longo prazo"
-      : "Bonus acumulados para saque no fechamento do ano"
+      ? "Capital em acumulação de longo prazo"
+      : "Bônus acumulados para saque no fechamento do ano"
     : isHead
-      ? "Pronto para iniciar a jornada de acumulacao"
-      : "Pronto para iniciar o ciclo anual de bonus";
+      ? "Pronto para iniciar a jornada de acumulação"
+      : "Pronto para iniciar o ciclo anual de bônus";
   const maturationMessage = hasInstallments
     ? isHead
-      ? "Maturacao do saldo em andamento"
-      : "Formacao do saldo anual em andamento"
+      ? "Maturação do saldo em andamento"
+      : "Formação do saldo anual em andamento"
     : isHead
       ? "Aguardando o primeiro aporte administrativo"
-      : "Aguardando o primeiro bonus trimestral";
-  const lastContributionLabel = isHead ? "Ultimo aporte" : "Ultimo bonus";
+      : "Aguardando o primeiro bônus trimestral";
+  const lastContributionLabel = isHead ? "Último aporte" : "Último bônus";
   const statusLabel = isHead ? "Status do ciclo" : "Status do ano";
-  const cycleBadgeLabel = isHead ? "Jornada de 5 anos" : "Ciclo anual de 4 bonus";
+  const cycleBadgeLabel = isHead ? "Jornada de 5 anos" : "Ciclo anual de 4 bônus";
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 sm:gap-6">
@@ -235,7 +235,7 @@ export default function HeadDashboardPanel({
                     {statusLabel}
                   </span>
                   <span className="mt-1 block text-sm tracking-normal text-slate-800 sm:text-base">
-                    Nao iniciado
+                    Não iniciado
                   </span>
                 </div>
               )}
