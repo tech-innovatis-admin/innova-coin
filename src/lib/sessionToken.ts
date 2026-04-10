@@ -14,12 +14,14 @@ export type SessionUser = {
   photo: string | null;
   platforms: string[];
   innovacoinRoles: string[];
+  mustChangePassword: boolean;
 };
 
 export type SessionTokenUser = {
   id: string;
   platforms: string[];
   innovacoinRoles: string[];
+  mustChangePassword: boolean;
 };
 
 type SessionPayload = JWTPayload & {
@@ -38,7 +40,16 @@ function toSessionTokenUser(user: SessionUser): SessionTokenUser {
     id: user.id,
     platforms: user.platforms,
     innovacoinRoles: user.innovacoinRoles,
+    mustChangePassword: user.mustChangePassword,
   };
+}
+
+function normalizeTokenArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
 }
 
 export async function createSessionToken(user: SessionUser) {
@@ -56,5 +67,12 @@ export async function readSessionPayload(token: string) {
 
 export async function readSessionUserFromToken(token: string) {
   const payload = await readSessionPayload(token);
-  return payload.user;
+  const user = payload.user;
+
+  return {
+    id: String(user?.id ?? ""),
+    platforms: normalizeTokenArray(user?.platforms),
+    innovacoinRoles: normalizeTokenArray(user?.innovacoinRoles),
+    mustChangePassword: user?.mustChangePassword === true,
+  } satisfies SessionTokenUser;
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
-import type { InstallmentEntry } from "@/lib/heads";
+import type { InnovaUserType, InstallmentEntry } from "@/lib/heads";
 
 type StatementCardProps = {
   installments: InstallmentEntry[];
+  userType: InnovaUserType;
 };
 
 function InstallmentIcon() {
@@ -40,7 +41,10 @@ function InstallmentIcon() {
   );
 }
 
-export default function StatementCard({ installments }: StatementCardProps) {
+export default function StatementCard({
+  installments,
+  userType,
+}: StatementCardProps) {
   const accumulatedInstallments = [...installments]
     .filter((installment) => installment.accumulatedAmount > 0)
     .sort(
@@ -49,6 +53,17 @@ export default function StatementCard({ installments }: StatementCardProps) {
         new Date(firstInstallment.addedAt).getTime(),
     );
   const hasInstallments = accumulatedInstallments.length > 0;
+  const isHead = userType === "head";
+  const supportText = isHead
+    ? "Parcelas que entram no saldo de resgate de 5 anos."
+    : "Os 4 bonus trimestrais que entram no saldo de resgate em 31/12/2026.";
+  const emptyTitle = isHead
+    ? "Nenhuma parcela acumulada ainda."
+    : "Nenhum bonus trimestral acumulado ainda.";
+  const emptyDescription = isHead
+    ? "Assim que o primeiro valor acumulado for registrado, ele aparecera aqui e comecara a compor o resgate futuro."
+    : "Assim que o primeiro bonus do ano for registrado, ele aparecera aqui e comecara a compor o resgate anual do colaborador.";
+  const installmentLabel = isHead ? "Parcela acumulada" : "Bonus acumulado";
 
   return (
     <article
@@ -70,10 +85,10 @@ export default function StatementCard({ installments }: StatementCardProps) {
               Extrato do acumulado
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">
-              Movimentações
+              Movimentacoes
             </h2>
             <p className="mt-1 text-[13px] leading-4 text-slate-600 sm:text-sm">
-              Parcelas que entram no saldo de resgate de 5 anos.
+              {supportText}
             </p>
           </div>
           <span
@@ -92,12 +107,8 @@ export default function StatementCard({ installments }: StatementCardProps) {
         <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {!hasInstallments ? (
             <div className="rounded-[1rem] border border-dashed border-slate-300/90 bg-white/[0.62] px-4 py-6 text-[13px] text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:rounded-[1.1rem] sm:px-5 sm:py-7 sm:text-sm">
-              <p className="font-semibold text-slate-700">
-                Nenhuma parcela acumulada ainda.
-              </p>
-              <p className="mt-2 leading-5 text-slate-500">
-                Assim que o primeiro valor acumulado for registrado, ele aparecerá aqui e começará a compor o resgate futuro.
-              </p>
+              <p className="font-semibold text-slate-700">{emptyTitle}</p>
+              <p className="mt-2 leading-5 text-slate-500">{emptyDescription}</p>
             </div>
           ) : null}
 
@@ -111,7 +122,7 @@ export default function StatementCard({ installments }: StatementCardProps) {
 
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold leading-4 text-slate-900 sm:text-sm">
-                    Parcela acumulada
+                    {installmentLabel}
                   </p>
                   <p className="mt-1 text-[12px] leading-4 text-slate-500 sm:text-sm">
                     {formatDateBR(installment.addedAt)}

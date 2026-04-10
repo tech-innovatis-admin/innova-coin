@@ -5,14 +5,20 @@ type AdminHeadViewProps = {
   user: DashboardUser;
 };
 
-export default function AdminHeadView({ user }: AdminHeadViewProps) {
-  const roleLabel = user.userType === "head" ? "head" : "colaborador";
+function getAdminIntro(user: DashboardUser) {
+  if (user.userType === "head") {
+    return "Voce esta vendo a mesma jornada patrimonial do head, em modo de visualizacao.";
+  }
 
+  return "Voce esta vendo o ciclo anual de bonus do colaborador, com resgate previsto para 31/12/2026.";
+}
+
+export default function AdminHeadView({ user }: AdminHeadViewProps) {
   return (
     <HeadDashboardPanel
       user={user}
       heading={user.name}
-      intro={`Você está vendo a mesma jornada patrimonial do ${roleLabel}, em modo de visualização.`}
+      intro={getAdminIntro(user)}
     />
   );
 }
