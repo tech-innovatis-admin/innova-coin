@@ -1,3 +1,5 @@
+import { getDbPool } from "@/lib/db";
+
 function addMonthsClamped(date: Date, months: number): Date {
   const day = date.getUTCDate();
   const firstOfTargetMonth = new Date(
@@ -53,10 +55,10 @@ export function calculateDepositAccruedYield(
   return balance - principal;
 }
 
-import { getDbPool } from "@/lib/db";
-
 const BACEN_SERIE_195_URL =
   "https://api.bcb.gov.br/dados/serie/bcdata.sgs.195/dados";
+
+const SYNC_LAG_BUFFER_DAYS = 5;
 
 type BacenRateItem = {
   data: string;
@@ -93,9 +95,8 @@ async function fetchBacenRates(
 }
 
 export async function ensurePoupancaRatesSynced(): Promise<void> {
-  const pool = getDbPool();
-
   try {
+    const pool = getDbPool();
     const maxResult = await pool.query<{ max: string | null }>(
       `select max(rate_date)::text as max from public.bacen_poupanca_rates`,
     );
@@ -111,12 +112,17 @@ export async function ensurePoupancaRatesSynced(): Promise<void> {
     let startDate: Date;
 
     if (latestCached) {
-      startDate = new Date(`${latestCached}T00:00:00Z`);
-      startDate.setUTCDate(startDate.getUTCDate() + 1);
+      const latestCachedDate = new Date(`${latestCached}T00:00:00Z`);
+      const daysSinceLatestCached = Math.floor(
+        (today.getTime() - latestCachedDate.getTime()) / (24 * 60 * 60 * 1000),
+      );
 
-      if (startDate.getTime() > today.getTime()) {
+      if (daysSinceLatestCached <= SYNC_LAG_BUFFER_DAYS) {
         return;
       }
+
+      startDate = new Date(latestCachedDate);
+      startDate.setUTCDate(startDate.getUTCDate() + 1);
     } else {
       const earliestResult = await pool.query<{ min: string | null }>(
         `select min(data_deposito)::text as min from public.parcelas_bonus`,
@@ -132,7 +138,7 @@ export async function ensurePoupancaRatesSynced(): Promise<void> {
 
     const rates = await fetchBacenRates(startDate, today);
 
-    if (rates.length === 0) {
+    if (!Array.isArray(rates) || rates.length === 0) {
       return;
     }
 
