@@ -186,7 +186,7 @@ export default function HeadDashboardPanel({
     : isHead
       ? "Aguardando o primeiro aporte administrativo"
       : "Aguardando o primeiro bônus trimestral";
-  const lastContributionLabel = isHead ? "Último aporte" : "Último bônus";
+  const lastContributionLabel = "Rendimento acumulado";
   const statusLabel = isHead ? "Status do ciclo" : "Status do ano";
   const cycleBadgeLabel = isHead ? "Jornada de 5 anos" : "Ciclo anual de 4 bônus";
 
@@ -235,7 +235,7 @@ export default function HeadDashboardPanel({
                     {lastContributionLabel}
                   </span>
                   <span className="mt-1 block text-sm tracking-normal text-emerald-900 sm:text-base">
-                    + {formatCurrencyBRL(user.lastInstallment ?? 0)}
+                    + {formatCurrencyBRL(user.accruedYield)}
                   </span>
                 </div>
               ) : (
