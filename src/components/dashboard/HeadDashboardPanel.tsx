@@ -245,7 +245,7 @@ export default function HeadDashboardPanel({
     : isHead
       ? "Aguardando o primeiro aporte administrativo"
       : "Aguardando o primeiro bônus trimestral";
-  const lastContributionLabel = "Rendimento acumulado";
+  const lastContributionLabel = "Rendimento da poupança";
   const statusLabel = isHead ? "Status do ciclo" : "Status do ano";
   const cycleBadgeLabel = isHead ? "Jornada de 5 anos" : "Ciclo anual de 4 bônus";
 
