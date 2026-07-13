@@ -1,5 +1,9 @@
 import { getDbPool } from "@/lib/db";
 import { getRemainingTime } from "@/lib/formatters";
+import {
+  ensurePoupancaRatesSynced,
+  getAccruedYieldForInstallments,
+} from "@/lib/poupanca";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
 export type InnovaUserType = "head" | "collaborator";
@@ -30,6 +34,7 @@ export type DashboardUser = {
   remainingTimeLabel: string;
   filledPigSegments: number;
   status: WithdrawStatus;
+  accruedYield: number;
 };
 
 export type HeadAccount = {
@@ -304,6 +309,9 @@ export async function getDashboardUserById(
     userType,
   );
 
+  await ensurePoupancaRatesSynced();
+  const accruedYield = await getAccruedYieldForInstallments(installments);
+
   return {
     id: String(user.id),
     name: normalizeDisplayName(user),
@@ -323,6 +331,7 @@ export async function getDashboardUserById(
     remainingTimeLabel,
     filledPigSegments: getFilledPigSegments(installmentCount, userType),
     status,
+    accruedYield,
   } satisfies DashboardUser;
 }
 
