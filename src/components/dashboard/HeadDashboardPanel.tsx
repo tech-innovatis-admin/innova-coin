@@ -250,7 +250,7 @@ export default function HeadDashboardPanel({
               )}
             </div>
             <p className="relative mt-4 break-words text-[2rem] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[3.15rem]">
-              {formatCurrencyBRL(user.pendingBalance)}
+              {formatCurrencyBRL(user.pendingBalance + user.accruedYield)}
             </p>
             <p className="relative mt-2 max-w-[26rem] text-sm font-medium leading-6 text-slate-600">
               {balanceSupportMessage}
