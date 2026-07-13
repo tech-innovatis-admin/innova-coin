@@ -5,6 +5,7 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 
 const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
+  timeZone: "UTC",
 });
 
 export function formatCurrencyBRL(value: number) {
