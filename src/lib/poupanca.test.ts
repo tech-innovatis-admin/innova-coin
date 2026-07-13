@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDepositAccruedYield } from "./poupanca";
+import { calculateDepositAccruedYield, getYieldRateHistory } from "./poupanca";
 
 describe("calculateDepositAccruedYield", () => {
   it("returns 0 when today is the deposit date (0 months elapsed)", () => {
@@ -80,5 +80,64 @@ describe("calculateDepositAccruedYield", () => {
     );
     // period 1 applies (1%), period 2 is skipped (missing rate) -> only +10
     expect(result).toBeCloseTo(10, 5);
+  });
+});
+
+describe("getYieldRateHistory", () => {
+  it("returns an empty history when there are no installments", () => {
+    const result = getYieldRateHistory([], new Map(), new Date("2026-03-10T00:00:00Z"));
+    expect(result).toEqual([]);
+  });
+
+  it("returns an empty history when no full month has elapsed yet", () => {
+    const rateMap = new Map([["2026-01-10", 1]]);
+    const result = getYieldRateHistory(
+      [{ addedAt: "2026-01-10" }],
+      rateMap,
+      new Date("2026-01-25T00:00:00Z"),
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("lists one entry per closed month, using the earliest installment as the anchor", () => {
+    const rateMap = new Map([
+      ["2026-01-10", 0.67],
+      ["2026-02-10", 0.65],
+    ]);
+    const result = getYieldRateHistory(
+      [{ addedAt: "2026-01-10" }],
+      rateMap,
+      new Date("2026-03-10T00:00:00Z"),
+    );
+    expect(result).toEqual([
+      { periodEndIso: "2026-02-10", ratePercent: 0.67 },
+      { periodEndIso: "2026-03-10", ratePercent: 0.65 },
+    ]);
+  });
+
+  it("anchors on the earliest of multiple installments, even if passed out of order", () => {
+    const rateMap = new Map([
+      ["2026-01-10", 0.67],
+      ["2026-02-10", 0.65],
+    ]);
+    const result = getYieldRateHistory(
+      [{ addedAt: "2026-04-10" }, { addedAt: "2026-01-10" }],
+      rateMap,
+      new Date("2026-03-10T00:00:00Z"),
+    );
+    expect(result).toEqual([
+      { periodEndIso: "2026-02-10", ratePercent: 0.67 },
+      { periodEndIso: "2026-03-10", ratePercent: 0.65 },
+    ]);
+  });
+
+  it("skips a month with no cached rate instead of throwing", () => {
+    const rateMap = new Map([["2026-01-10", 0.67]]);
+    const result = getYieldRateHistory(
+      [{ addedAt: "2026-01-10" }],
+      rateMap,
+      new Date("2026-03-10T00:00:00Z"),
+    );
+    expect(result).toEqual([{ periodEndIso: "2026-02-10", ratePercent: 0.67 }]);
   });
 });

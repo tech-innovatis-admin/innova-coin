@@ -209,9 +209,48 @@ export function sumAccruedYield(
   );
 }
 
-export async function getAccruedYieldForInstallments(
-  installments: { accumulatedAmount: number; addedAt: string }[],
-): Promise<number> {
-  const rateMap = await getPoupancaRatesMap();
-  return sumAccruedYield(installments, rateMap, new Date());
+export type YieldRateHistoryEntry = {
+  periodEndIso: string;
+  ratePercent: number;
+};
+
+// Todos os depositos ancoram no dia 10 (POUPANCA_ANNIVERSARY_DAY), entao a
+// taxa aplicada num determinado mes e a mesma para qualquer deposito que ja
+// exista naquele mes -- basta caminhar mes a mes a partir do deposito mais
+// antigo do usuario, sem precisar tratar cada deposito separadamente.
+export function getYieldRateHistory(
+  installments: { addedAt: string }[],
+  rateMap: Map<string, number>,
+  today: Date,
+): YieldRateHistoryEntry[] {
+  if (installments.length === 0) {
+    return [];
+  }
+
+  const earliestDepositIso = installments
+    .map((installment) => installment.addedAt.slice(0, 10))
+    .sort()[0];
+  const earliestDepositDate = new Date(`${earliestDepositIso}T00:00:00Z`);
+  const anchorDate = getAnchorDate(earliestDepositDate);
+
+  const history: YieldRateHistoryEntry[] = [];
+  let periodStart = anchorDate;
+  let periodIndex = 1;
+
+  while (true) {
+    const periodEnd = addMonthsAtAnniversary(anchorDate, periodIndex);
+    if (periodEnd.getTime() > today.getTime()) {
+      break;
+    }
+
+    const rate = rateMap.get(toDateKey(periodStart));
+    if (rate !== undefined) {
+      history.push({ periodEndIso: toDateKey(periodEnd), ratePercent: rate });
+    }
+
+    periodStart = periodEnd;
+    periodIndex += 1;
+  }
+
+  return history;
 }

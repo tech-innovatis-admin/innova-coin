@@ -3,7 +3,12 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-import { formatCurrencyBRL, formatDateBR } from "@/lib/formatters";
+import {
+  formatCurrencyBRL,
+  formatDateBR,
+  formatMonthYearBR,
+  formatPercentBR,
+} from "@/lib/formatters";
 import type { DashboardUser } from "@/lib/heads";
 import UserAvatar from "../shared/UserAvatar";
 import CajuStatementCard from "./CajuStatementCard";
@@ -11,6 +16,55 @@ import StatementCard from "./StatementCard";
 
 function getPigSegmentCountByUserType(userType: DashboardUser["userType"]) {
   return userType === "head" ? 20 : 4;
+}
+
+function YieldRateHistoryTooltip({
+  history,
+}: {
+  history: DashboardUser["yieldRateHistory"];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (history.length === 0) {
+    return null;
+  }
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-label="Ver histórico de índices do rendimento"
+        aria-expanded={isOpen}
+        className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-emerald-700/40 text-[8px] font-bold leading-none text-emerald-700/80 transition hover:border-emerald-700/70 hover:text-emerald-800"
+      >
+        ?
+      </button>
+      {isOpen ? (
+        <span
+          role="tooltip"
+          className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-emerald-200/80 bg-white p-3 text-left normal-case shadow-[0_16px_34px_rgba(15,23,42,0.16)]"
+        >
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Índice da poupança por mês
+          </span>
+          <span className="flex flex-col gap-1">
+            {history.map((entry) => (
+              <span
+                key={entry.periodEndIso}
+                className="flex items-center justify-between text-xs font-medium text-slate-700"
+              >
+                <span>{formatMonthYearBR(entry.periodEndIso)}</span>
+                <span className="font-semibold text-emerald-800">
+                  {formatPercentBR(entry.ratePercent)}
+                </span>
+              </span>
+            ))}
+          </span>
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function SavingsPig({
@@ -231,8 +285,9 @@ export default function HeadDashboardPanel({
               </span>
               {hasInstallments ? (
                 <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/[0.95] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-800 shadow-[0_16px_34px_rgba(16,185,129,0.14)] sm:text-[11px]">
-                  <span className="block text-[9px] font-semibold tracking-[0.16em] text-emerald-700/80 sm:text-[10px]">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-[0.16em] text-emerald-700/80 sm:text-[10px]">
                     {lastContributionLabel}
+                    <YieldRateHistoryTooltip history={user.yieldRateHistory} />
                   </span>
                   <span className="mt-1 block text-sm tracking-normal text-emerald-900 sm:text-base">
                     + {formatCurrencyBRL(user.accruedYield)}

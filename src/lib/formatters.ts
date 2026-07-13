@@ -8,6 +8,12 @@ const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
+const monthYearFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "short",
+  year: "2-digit",
+  timeZone: "UTC",
+});
+
 export function formatCurrencyBRL(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -21,6 +27,15 @@ export function formatDateTimeBR(value: string) {
 
 export function formatDateBR(value: string) {
   return shortDateFormatter.format(new Date(value));
+}
+
+export function formatMonthYearBR(value: string) {
+  const label = monthYearFormatter.format(new Date(value));
+  return label.charAt(0).toUpperCase() + label.slice(1).replace(".", "");
+}
+
+export function formatPercentBR(value: number) {
+  return `${value.toFixed(2).replace(".", ",")}%`;
 }
 
 function formatTimeUnit(
