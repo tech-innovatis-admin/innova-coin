@@ -209,48 +209,75 @@ export function sumAccruedYield(
   );
 }
 
-export type YieldRateHistoryEntry = {
+export type MonthlyYieldEntry = {
   periodEndIso: string;
   ratePercent: number;
+  monthlyAmount: number;
 };
 
 // Todos os depositos ancoram no dia 10 (POUPANCA_ANNIVERSARY_DAY), entao a
 // taxa aplicada num determinado mes e a mesma para qualquer deposito que ja
-// exista naquele mes -- basta caminhar mes a mes a partir do deposito mais
-// antigo do usuario, sem precisar tratar cada deposito separadamente.
-export function getYieldRateHistory(
-  installments: { addedAt: string }[],
+// exista naquele mes. Caminha mes a mes (a partir do deposito mais antigo do
+// usuario) simulando o saldo composto de cada deposito separadamente -- o
+// valor ganho num mes soma o saldo ja acumulado dos meses anteriores, nao
+// so o principal, entao o mes seguinte reflete o acumulo do mes passado.
+export function getMonthlyYieldBreakdown(
+  installments: { accumulatedAmount: number; addedAt: string }[],
   rateMap: Map<string, number>,
   today: Date,
-): YieldRateHistoryEntry[] {
+): MonthlyYieldEntry[] {
   if (installments.length === 0) {
     return [];
   }
 
-  const earliestDepositIso = installments
-    .map((installment) => installment.addedAt.slice(0, 10))
-    .sort()[0];
-  const earliestDepositDate = new Date(`${earliestDepositIso}T00:00:00Z`);
-  const anchorDate = getAnchorDate(earliestDepositDate);
+  const trackers = installments.map((installment) => ({
+    anchorDate: getAnchorDate(
+      new Date(`${installment.addedAt.slice(0, 10)}T00:00:00Z`),
+    ),
+    balance: installment.accumulatedAmount,
+  }));
 
-  const history: YieldRateHistoryEntry[] = [];
-  let periodStart = anchorDate;
+  const earliestAnchor = trackers.reduce(
+    (earliest, tracker) =>
+      tracker.anchorDate.getTime() < earliest.getTime()
+        ? tracker.anchorDate
+        : earliest,
+    trackers[0].anchorDate,
+  );
+
+  const entries: MonthlyYieldEntry[] = [];
   let periodIndex = 1;
 
   while (true) {
-    const periodEnd = addMonthsAtAnniversary(anchorDate, periodIndex);
+    const periodStart = addMonthsAtAnniversary(earliestAnchor, periodIndex - 1);
+    const periodEnd = addMonthsAtAnniversary(earliestAnchor, periodIndex);
     if (periodEnd.getTime() > today.getTime()) {
       break;
     }
 
     const rate = rateMap.get(toDateKey(periodStart));
+    let monthlyAmount = 0;
+
     if (rate !== undefined) {
-      history.push({ periodEndIso: toDateKey(periodEnd), ratePercent: rate });
+      for (const tracker of trackers) {
+        if (tracker.anchorDate.getTime() > periodStart.getTime()) {
+          continue;
+        }
+
+        const gain = tracker.balance * (rate / 100);
+        monthlyAmount += gain;
+        tracker.balance += gain;
+      }
+
+      entries.push({
+        periodEndIso: toDateKey(periodEnd),
+        ratePercent: rate,
+        monthlyAmount,
+      });
     }
 
-    periodStart = periodEnd;
     periodIndex += 1;
   }
 
-  return history;
+  return entries;
 }

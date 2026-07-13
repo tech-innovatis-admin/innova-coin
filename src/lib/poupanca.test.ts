@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDepositAccruedYield, getYieldRateHistory } from "./poupanca";
+import { calculateDepositAccruedYield, getMonthlyYieldBreakdown } from "./poupanca";
 
 describe("calculateDepositAccruedYield", () => {
   it("returns 0 when today is the deposit date (0 months elapsed)", () => {
@@ -83,61 +83,83 @@ describe("calculateDepositAccruedYield", () => {
   });
 });
 
-describe("getYieldRateHistory", () => {
-  it("returns an empty history when there are no installments", () => {
-    const result = getYieldRateHistory([], new Map(), new Date("2026-03-10T00:00:00Z"));
+describe("getMonthlyYieldBreakdown", () => {
+  it("returns an empty breakdown when there are no installments", () => {
+    const result = getMonthlyYieldBreakdown(
+      [],
+      new Map(),
+      new Date("2026-03-10T00:00:00Z"),
+    );
     expect(result).toEqual([]);
   });
 
-  it("returns an empty history when no full month has elapsed yet", () => {
+  it("returns an empty breakdown when no full month has elapsed yet", () => {
     const rateMap = new Map([["2026-01-10", 1]]);
-    const result = getYieldRateHistory(
-      [{ addedAt: "2026-01-10" }],
+    const result = getMonthlyYieldBreakdown(
+      [{ accumulatedAmount: 1000, addedAt: "2026-01-10" }],
       rateMap,
       new Date("2026-01-25T00:00:00Z"),
     );
     expect(result).toEqual([]);
   });
 
-  it("lists one entry per closed month, using the earliest installment as the anchor", () => {
+  it("compounds a single deposit month over month (each month's amount is based on the already-grown balance)", () => {
     const rateMap = new Map([
       ["2026-01-10", 0.67],
       ["2026-02-10", 0.65],
     ]);
-    const result = getYieldRateHistory(
-      [{ addedAt: "2026-01-10" }],
+    const result = getMonthlyYieldBreakdown(
+      [{ accumulatedAmount: 1000, addedAt: "2026-01-10" }],
       rateMap,
       new Date("2026-03-10T00:00:00Z"),
     );
-    expect(result).toEqual([
-      { periodEndIso: "2026-02-10", ratePercent: 0.67 },
-      { periodEndIso: "2026-03-10", ratePercent: 0.65 },
-    ]);
+    // period 1: 1000 * 0.0067 = 6.7 -> balance becomes 1006.7
+    // period 2: 1006.7 * 0.0065 = 6.54355 (uses the grown balance, not the original 1000)
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      periodEndIso: "2026-02-10",
+      ratePercent: 0.67,
+      monthlyAmount: 6.7,
+    });
+    expect(result[1].periodEndIso).toBe("2026-03-10");
+    expect(result[1].ratePercent).toBe(0.65);
+    expect(result[1].monthlyAmount).toBeCloseTo(6.54355, 5);
   });
 
-  it("anchors on the earliest of multiple installments, even if passed out of order", () => {
+  it("only includes a deposit's own gain starting the month it actually existed", () => {
+    // Deposit A (Jan 10, R$1000) is already accruing by Feb 10; deposit B
+    // (Feb 10, R$500) only starts accruing from Mar 10 onward, so Feb 10's
+    // monthlyAmount must come from A alone, not from A+B.
     const rateMap = new Map([
-      ["2026-01-10", 0.67],
-      ["2026-02-10", 0.65],
+      ["2026-01-10", 1],
+      ["2026-02-10", 2],
     ]);
-    const result = getYieldRateHistory(
-      [{ addedAt: "2026-04-10" }, { addedAt: "2026-01-10" }],
+    const result = getMonthlyYieldBreakdown(
+      [
+        { accumulatedAmount: 1000, addedAt: "2026-01-10" },
+        { accumulatedAmount: 500, addedAt: "2026-02-10" },
+      ],
       rateMap,
       new Date("2026-03-10T00:00:00Z"),
     );
+    // period 1 (Feb 10): only A -> 1000 * 0.01 = 10; A's balance becomes 1010
+    // period 2 (Mar 10): A -> 1010 * 0.02 = 20.2, B -> 500 * 0.02 = 10 -> 30.2 total
     expect(result).toEqual([
-      { periodEndIso: "2026-02-10", ratePercent: 0.67 },
-      { periodEndIso: "2026-03-10", ratePercent: 0.65 },
+      { periodEndIso: "2026-02-10", ratePercent: 1, monthlyAmount: 10 },
+      { periodEndIso: "2026-03-10", ratePercent: 2, monthlyAmount: 30.2 },
     ]);
   });
 
-  it("skips a month with no cached rate instead of throwing", () => {
-    const rateMap = new Map([["2026-01-10", 0.67]]);
-    const result = getYieldRateHistory(
-      [{ addedAt: "2026-01-10" }],
+  it("skips a month with no cached rate instead of throwing, and does not grow the balance that month", () => {
+    const rateMap = new Map([["2026-01-10", 1]]);
+    const result = getMonthlyYieldBreakdown(
+      [{ accumulatedAmount: 1000, addedAt: "2026-01-10" }],
       rateMap,
       new Date("2026-03-10T00:00:00Z"),
     );
-    expect(result).toEqual([{ periodEndIso: "2026-02-10", ratePercent: 0.67 }]);
+    // "2026-02-10" has no cached rate, so no entry for it -- only period 1
+    expect(result).toEqual([
+      { periodEndIso: "2026-02-10", ratePercent: 1, monthlyAmount: 10 },
+    ]);
   });
 });

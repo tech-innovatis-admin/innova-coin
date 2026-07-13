@@ -2,10 +2,10 @@ import { getDbPool } from "@/lib/db";
 import { getRemainingTime } from "@/lib/formatters";
 import {
   ensurePoupancaRatesSynced,
+  getMonthlyYieldBreakdown,
   getPoupancaRatesMap,
-  getYieldRateHistory,
   sumAccruedYield,
-  type YieldRateHistoryEntry,
+  type MonthlyYieldEntry,
 } from "@/lib/poupanca";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
@@ -38,7 +38,7 @@ export type DashboardUser = {
   filledPigSegments: number;
   status: WithdrawStatus;
   accruedYield: number;
-  yieldRateHistory: YieldRateHistoryEntry[];
+  monthlyYieldHistory: MonthlyYieldEntry[];
 };
 
 export type HeadAccount = {
@@ -364,7 +364,11 @@ export async function getDashboardUserById(
   const rateMap = await getPoupancaRatesMap();
   const referenceDate = new Date();
   const accruedYield = sumAccruedYield(installments, rateMap, referenceDate);
-  const yieldRateHistory = getYieldRateHistory(installments, rateMap, referenceDate);
+  const monthlyYieldHistory = getMonthlyYieldBreakdown(
+    installments,
+    rateMap,
+    referenceDate,
+  );
 
   return {
     id: String(user.id),
@@ -386,7 +390,7 @@ export async function getDashboardUserById(
     filledPigSegments: getFilledPigSegments(installmentCount, userType),
     status,
     accruedYield,
-    yieldRateHistory,
+    monthlyYieldHistory,
   } satisfies DashboardUser;
 }
 
