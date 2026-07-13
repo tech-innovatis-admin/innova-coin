@@ -60,6 +60,10 @@ const BACEN_SERIE_195_URL =
 
 const SYNC_LAG_BUFFER_DAYS = 5;
 
+const SYNC_ATTEMPT_THROTTLE_MS = 5 * 60 * 1000;
+
+let lastSyncAttemptAt: number | null = null;
+
 type BacenRateItem = {
   data: string;
   dataFim: string;
@@ -85,7 +89,10 @@ async function fetchBacenRates(
   const url = `${BACEN_SERIE_195_URL}?formato=json&dataInicial=${formatDateAsBr(
     startDate,
   )}&dataFinal=${formatDateAsBr(endDate)}`;
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(3000),
+  });
 
   if (!response.ok) {
     throw new Error(`Bacen respondeu ${response.status}`);
@@ -97,6 +104,13 @@ async function fetchBacenRates(
 export async function ensurePoupancaRatesSynced(): Promise<void> {
   try {
     const pool = getDbPool();
+
+    const now = Date.now();
+    if (lastSyncAttemptAt !== null && now - lastSyncAttemptAt < SYNC_ATTEMPT_THROTTLE_MS) {
+      return;
+    }
+    lastSyncAttemptAt = now;
+
     const maxResult = await pool.query<{ max: string | null }>(
       `select max(rate_date)::text as max from public.bacen_poupanca_rates`,
     );
