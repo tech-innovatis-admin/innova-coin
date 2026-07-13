@@ -104,7 +104,7 @@ function renderUserCard(user: HeadAccount) {
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-700">Acumulado</p>
           <p className="mt-1 text-2xl font-semibold text-slate-950">
-            {formatCurrencyBRL(user.pendingBalance)}
+            {formatCurrencyBRL(user.pendingBalance + user.accruedYield)}
           </p>
         </div>
 

@@ -3,6 +3,8 @@ import { getRemainingTime } from "@/lib/formatters";
 import {
   ensurePoupancaRatesSynced,
   getAccruedYieldForInstallments,
+  getPoupancaRatesMap,
+  sumAccruedYield,
 } from "@/lib/poupanca";
 
 export type WithdrawStatus = "awaiting_deposit" | "pending" | "released";
@@ -52,6 +54,7 @@ export type HeadAccount = {
   availableAt: string | null;
   remainingTimeLabel: string;
   status: WithdrawStatus;
+  accruedYield: number;
 };
 
 type UserSummaryRow = {
@@ -144,7 +147,9 @@ function normalizeEmail(row: Pick<UserSummaryRow, "email" | "username">) {
   return row.email?.trim() || row.username?.trim() || "-";
 }
 
-function mapHeadSummary(row: UserSummaryRow): Omit<HeadAccount, "installments"> {
+function mapHeadSummary(
+  row: UserSummaryRow,
+): Omit<HeadAccount, "installments" | "accruedYield"> {
   const userType = resolveInnovaUserType(row.innovacoin_roles) ?? "collaborator";
   const { availableAt, remainingTimeLabel, status } = deriveAvailability(
     row.first_deposit_date,
@@ -228,12 +233,56 @@ export async function getHeadSummaries() {
     `,
   );
 
-  return result.rows
-    .filter((row) => resolveInnovaUserType(row.innovacoin_roles) !== null)
-    .map((row) => ({
-      ...mapHeadSummary(row),
-      installments: [],
-    }));
+  const relevantUsers = result.rows.filter(
+    (row) => resolveInnovaUserType(row.innovacoin_roles) !== null,
+  );
+
+  await ensurePoupancaRatesSynced();
+  const rateMap = await getPoupancaRatesMap();
+  const today = new Date();
+
+  const userIds = relevantUsers.map((row) => String(row.id));
+  const installmentsResult =
+    userIds.length > 0
+      ? await pool.query<{
+          user_id: string;
+          valor_depositado: string;
+          data_deposito: string;
+        }>(
+          `select user_id::text as user_id, valor_depositado, data_deposito::text as data_deposito
+           from public.parcelas_bonus
+           where user_id = any($1::bigint[])`,
+          [userIds],
+        )
+      : { rows: [] };
+
+  const installmentsByUser = new Map<
+    string,
+    { accumulatedAmount: number; addedAt: string }[]
+  >();
+
+  for (const row of installmentsResult.rows) {
+    const entry = {
+      accumulatedAmount: Number(row.valor_depositado ?? 0),
+      addedAt: row.data_deposito,
+    };
+    const existing = installmentsByUser.get(row.user_id);
+    if (existing) {
+      existing.push(entry);
+    } else {
+      installmentsByUser.set(row.user_id, [entry]);
+    }
+  }
+
+  return relevantUsers.map((row) => ({
+    ...mapHeadSummary(row),
+    installments: [],
+    accruedYield: sumAccruedYield(
+      installmentsByUser.get(String(row.id)) ?? [],
+      rateMap,
+      today,
+    ),
+  }));
 }
 
 export async function getDashboardUserById(

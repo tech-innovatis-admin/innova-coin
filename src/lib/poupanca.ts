@@ -180,18 +180,21 @@ export async function ensurePoupancaRatesSynced(): Promise<void> {
   }
 }
 
-export async function getAccruedYieldForInstallments(
-  installments: { accumulatedAmount: number; addedAt: string }[],
-): Promise<number> {
+export async function getPoupancaRatesMap(): Promise<Map<string, number>> {
   const pool = getDbPool();
   const result = await pool.query<{ rate_date: string; valor: string }>(
     `select rate_date::text as rate_date, valor from public.bacen_poupanca_rates`,
   );
-  const rateByDate = new Map(
-    result.rows.map((row) => [row.rate_date, Number(row.valor)]),
-  );
-  const getRate = (dateKey: string) => rateByDate.get(dateKey);
-  const today = new Date();
+
+  return new Map(result.rows.map((row) => [row.rate_date, Number(row.valor)]));
+}
+
+export function sumAccruedYield(
+  installments: { accumulatedAmount: number; addedAt: string }[],
+  rateMap: Map<string, number>,
+  today: Date,
+): number {
+  const getRate = (dateKey: string) => rateMap.get(dateKey);
 
   return installments.reduce(
     (total, installment) =>
@@ -204,4 +207,11 @@ export async function getAccruedYieldForInstallments(
       ),
     0,
   );
+}
+
+export async function getAccruedYieldForInstallments(
+  installments: { accumulatedAmount: number; addedAt: string }[],
+): Promise<number> {
+  const rateMap = await getPoupancaRatesMap();
+  return sumAccruedYield(installments, rateMap, new Date());
 }
