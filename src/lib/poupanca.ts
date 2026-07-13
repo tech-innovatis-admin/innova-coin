@@ -1,23 +1,27 @@
 import { getDbPool } from "@/lib/db";
 
-function addMonthsClamped(date: Date, months: number): Date {
-  const day = date.getUTCDate();
-  const firstOfTargetMonth = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
-  );
-  const daysInTargetMonth = new Date(
-    Date.UTC(
-      firstOfTargetMonth.getUTCFullYear(),
-      firstOfTargetMonth.getUTCMonth() + 1,
-      0,
-    ),
-  ).getUTCDate();
-  const clampedDay = Math.min(day, daysInTargetMonth);
+// Todo bonus desta aplicacao e depositado no dia 10 do mes (regra do
+// negocio: dia 10 do mes subsequente ao fechamento do trimestre), entao o
+// aniversario da poupanca e sempre considerado como o dia 10 do mes do
+// deposito, independente do dia exato gravado em data_deposito.
+const POUPANCA_ANNIVERSARY_DAY = 10;
+
+function getAnchorDate(depositDate: Date): Date {
   return new Date(
     Date.UTC(
-      firstOfTargetMonth.getUTCFullYear(),
-      firstOfTargetMonth.getUTCMonth(),
-      clampedDay,
+      depositDate.getUTCFullYear(),
+      depositDate.getUTCMonth(),
+      POUPANCA_ANNIVERSARY_DAY,
+    ),
+  );
+}
+
+function addMonthsAtAnniversary(anchorDate: Date, months: number): Date {
+  return new Date(
+    Date.UTC(
+      anchorDate.getUTCFullYear(),
+      anchorDate.getUTCMonth() + months,
+      POUPANCA_ANNIVERSARY_DAY,
     ),
   );
 }
@@ -33,12 +37,13 @@ export function calculateDepositAccruedYield(
   today: Date,
 ): number {
   const depositDate = new Date(`${depositDateIso.slice(0, 10)}T00:00:00Z`);
+  const anchorDate = getAnchorDate(depositDate);
   let balance = principal;
-  let periodStart = depositDate;
+  let periodStart = anchorDate;
   let periodIndex = 1;
 
   while (true) {
-    const periodEnd = addMonthsClamped(depositDate, periodIndex);
+    const periodEnd = addMonthsAtAnniversary(anchorDate, periodIndex);
     if (periodEnd.getTime() > today.getTime()) {
       break;
     }

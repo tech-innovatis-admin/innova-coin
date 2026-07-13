@@ -49,17 +49,19 @@ describe("calculateDepositAccruedYield", () => {
     expect(result).toBeCloseTo(30.2, 5);
   });
 
-  it("clamps the aniversary to the last day of a shorter month (deposit on the 31st)", () => {
+  it("always anchors the aniversary to day 10 of the deposit's month, regardless of the exact day stored", () => {
+    // Every bônus in this app is deposited on the 10th of the month by
+    // business rule, so the function normalizes to day 10 even if a
+    // different day-of-month were ever passed in.
     const rates: Record<string, number> = {
-      "2026-01-31": 1,
+      "2026-01-10": 1,
     };
     const getRate = (dateKey: string) => rates[dateKey];
-    // 2026 is not a leap year, so the first period must close on 2026-02-28
     const result = calculateDepositAccruedYield(
       "2026-01-31",
       1000,
       getRate,
-      new Date("2026-03-01T00:00:00Z"),
+      new Date("2026-02-10T00:00:00Z"),
     );
     expect(result).toBeCloseTo(10, 5);
   });
