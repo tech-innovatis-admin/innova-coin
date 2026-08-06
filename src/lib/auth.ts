@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextResponse } from "next/server";
 
+import { credentialsEnabled } from "@/lib/authMode";
 import { getDbPool } from "@/lib/db";
 import {
   ADMIN_HOME_PATH,
@@ -32,6 +33,7 @@ type UserRow = {
   platforms: string[] | null;
   innovacoin_roles: string[] | null;
   must_change_password: boolean | null;
+  cognito_sub?: string | null;
 };
 
 type SessionUserRow = Omit<UserRow, "hash">;
@@ -282,10 +284,187 @@ export async function authenticateUser(identifier: string, password: string) {
   return mapSessionUser(user);
 }
 
+export async function getUserByCognitoSub(sub: string) {
+  const normalizedSub = sub.trim();
+  if (!normalizedSub) {
+    return null;
+  }
+
+  const pool = getDbPool();
+  const result = await pool.query<SessionUserRow & { cognito_sub: string | null }>(
+    `
+      select
+        id,
+        email,
+        role,
+        username,
+        name,
+        photo,
+        coalesce(must_change_password, false) as must_change_password,
+        coalesce(platforms, array[]::varchar[]) as platforms,
+        coalesce(innovacoin_roles, array[]::varchar[]) as innovacoin_roles,
+        cognito_sub
+      from public.users
+      where cognito_sub = $1
+      limit 1
+    `,
+    [normalizedSub],
+  );
+
+  const user = result.rows[0];
+  if (!user) {
+    return null;
+  }
+
+  return {
+    session: mapSessionUser(user),
+    cognitoSub: user.cognito_sub,
+  };
+}
+
+export async function getUserWithCognitoByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const pool = getDbPool();
+  const result = await pool.query<SessionUserRow & { cognito_sub: string | null }>(
+    `
+      select
+        id,
+        email,
+        role,
+        username,
+        name,
+        photo,
+        coalesce(must_change_password, false) as must_change_password,
+        coalesce(platforms, array[]::varchar[]) as platforms,
+        coalesce(innovacoin_roles, array[]::varchar[]) as innovacoin_roles,
+        cognito_sub
+      from public.users
+      where lower(coalesce(email, '')) = $1
+      limit 1
+    `,
+    [normalizedEmail],
+  );
+
+  const user = result.rows[0];
+  if (!user) {
+    return null;
+  }
+
+  return {
+    session: mapSessionUser(user),
+    cognitoSub: user.cognito_sub,
+  };
+}
+
+export async function linkCognitoSub(userId: string, sub: string) {
+  const pool = getDbPool();
+  await pool.query(
+    `
+      update public.users
+      set
+        cognito_sub = $2,
+        auth_provider = case
+          when auth_provider = 'LEGACY' then 'HYBRID'
+          else auth_provider
+        end,
+        auth_migrated_at = coalesce(auth_migrated_at, now()),
+        auth_last_sync_at = now(),
+        must_change_password = false,
+        updated_at = now()
+      where id = $1::bigint
+        and (cognito_sub is null or cognito_sub = $2)
+    `,
+    [userId, sub],
+  );
+}
+
+export async function resolveUserFromCognitoIdentity(
+  sub: string,
+  email: string | null,
+): Promise<LoginAttemptResult> {
+  let resolved = await getUserByCognitoSub(sub);
+
+  if (!resolved && email) {
+    const byEmail = await getUserWithCognitoByEmail(email);
+    if (byEmail) {
+      if (byEmail.cognitoSub && byEmail.cognitoSub !== sub) {
+        return {
+          success: false,
+          status: 403,
+          error: "Identidade Cognito conflita com outro vínculo.",
+        };
+      }
+
+      if (!byEmail.cognitoSub) {
+        await linkCognitoSub(byEmail.session.id, sub);
+        resolved = await getUserByCognitoSub(sub);
+      } else {
+        resolved = byEmail;
+      }
+    }
+  }
+
+  if (!resolved) {
+    return {
+      success: false,
+      status: 403,
+      error: "Usuário não vinculado ao Innova Coin.",
+    };
+  }
+
+  // Cognito gerencia a senha: libera primeiro acesso legado se ainda estiver marcado.
+  if (resolved.session.mustChangePassword) {
+    const pool = getDbPool();
+    await pool.query(
+      `
+        update public.users
+        set
+          must_change_password = false,
+          updated_at = now()
+        where id = $1::bigint
+      `,
+      [resolved.session.id],
+    );
+  }
+
+  const user = {
+    ...resolved.session,
+    mustChangePassword: false,
+  } satisfies SessionUser;
+
+  const redirectTo = getPostLoginPath(user);
+
+  if (!redirectTo) {
+    return {
+      success: false,
+      status: 403,
+      error: "Usuário sem acesso à plataforma.",
+    };
+  }
+
+  return {
+    success: true,
+    redirectTo,
+    user,
+  };
+}
+
 export async function validateLoginAttempt(
   identifier: string,
   password: string,
 ): Promise<LoginAttemptResult> {
+  if (!credentialsEnabled()) {
+    return {
+      success: false,
+      status: 403,
+      error: "Login por senha desabilitado. Use SSO.",
+    };
+  }
+
   const normalizedIdentifier = identifier.trim();
   const normalizedPassword = password;
 
