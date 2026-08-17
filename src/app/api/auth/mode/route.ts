@@ -11,6 +11,6 @@ export async function GET() {
     mode,
     credentials: credentialsEnabled(mode),
     cognito: cognitoEnabled(mode),
-    platformCode: process.env.PLATFORM_CODE || "innovacoin",
+    platformCode: process.env["PLATFORM_CODE"] || "innovacoin",
   });
 }

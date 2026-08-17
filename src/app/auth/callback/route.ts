@@ -7,8 +7,15 @@ import {
 import { cognitoEnabled } from "@/lib/authMode";
 import {
   CognitoConfigError,
+  cookieSecure,
+  decodeOAuthCookie,
   exchangeCode,
+  publicAppOrigin,
   verifyIdToken,
+  buildLogoutUrl,
+  isSilentAuthError,
+  REAUTH_COOKIE,
+  reauthCookieOptions,
 } from "@/lib/cognitoOidc";
 import { LOGIN_PATH } from "@/lib/platformAccess";
 import { createSessionToken } from "@/lib/sessionToken";
@@ -16,10 +23,7 @@ import { createSessionToken } from "@/lib/sessionToken";
 const OAUTH_COOKIE = "innovacoin_oauth";
 
 function appOrigin(request: NextRequest) {
-  return (
-    process.env.APP_URL?.replace(/\/$/, "") ||
-    `${request.nextUrl.protocol}//${request.nextUrl.host}`
-  );
+  return publicAppOrigin(request);
 }
 
 function errorRedirect(request: NextRequest, code: string) {
@@ -38,6 +42,12 @@ export async function GET(request: NextRequest) {
 
   const error = request.nextUrl.searchParams.get("error");
   if (error) {
+    if (isSilentAuthError(error)) {
+      const response = NextResponse.redirect(buildLogoutUrl());
+      response.cookies.set(REAUTH_COOKIE, "1", reauthCookieOptions(120));
+      response.cookies.set(OAUTH_COOKIE, "", reauthCookieOptions(0));
+      return response;
+    }
     return errorRedirect(request, "cognito_denied");
   }
 
@@ -54,7 +64,7 @@ export async function GET(request: NextRequest) {
 
   let oauth: { state?: string; nonce?: string; code_verifier?: string };
   try {
-    oauth = JSON.parse(rawCookie) as typeof oauth;
+    oauth = decodeOAuthCookie(rawCookie);
   } catch {
     return errorRedirect(request, "invalid_oauth_cookie");
   }
@@ -83,7 +93,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(OAUTH_COOKIE, "", {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase() === "true",
+      secure: cookieSecure(),
       path: "/",
       maxAge: 0,
     });

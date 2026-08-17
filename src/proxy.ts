@@ -43,7 +43,7 @@ function isLocalHost(host: string) {
 }
 
 function shouldUseSecureCookie(request: NextRequest) {
-  const configuredValue = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+  const configuredValue = process.env["AUTH_COOKIE_SECURE"]?.trim().toLowerCase();
 
   if (configuredValue === "true") {
     return true;
@@ -177,5 +177,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\..*$).*)"],
+  matcher: ["/((?!api|auth|_next/static|_next/image|.*\\..*$).*)"],
 };

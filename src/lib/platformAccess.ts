@@ -1,3 +1,5 @@
+import { unauthenticatedLoginPath } from "@/lib/authMode";
+
 export const LOGIN_PATH = "/login";
 export const FIRST_ACCESS_PATH = "/primeiro-acesso";
 export const ADMIN_HOME_PATH = "/admin";
@@ -127,7 +129,7 @@ export function getRedirectTargetForPathname(
   pathname: string,
 ) {
   if (!user) {
-    return isProtectedAppPath(pathname) ? LOGIN_PATH : null;
+    return isProtectedAppPath(pathname) ? unauthenticatedLoginPath() : null;
   }
 
   const postLoginPath = getPostLoginPath(user);

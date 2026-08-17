@@ -35,7 +35,7 @@ type SessionPayload = JWTPayload & {
 
 function getSessionSecret() {
   const secret =
-    process.env.AUTH_SECRET || process.env.DB_PASSWORD || "change-this-secret";
+    process.env["AUTH_SECRET"] || process.env["DB_PASSWORD"] || "change-this-secret";
 
   return new TextEncoder().encode(secret);
 }

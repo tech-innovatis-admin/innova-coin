@@ -1,17 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { cognitoEnabled } from "@/lib/authMode";
 import {
   buildAuthorizeUrl,
   CognitoConfigError,
+  cookieSecure,
   createNonce,
   createOAuthState,
   createPkcePair,
+  encodeOAuthCookie,
+  REAUTH_COOKIE,
+  reauthCookieOptions,
+  type AuthorizePrompt,
 } from "@/lib/cognitoOidc";
 
 const OAUTH_COOKIE = "innovacoin_oauth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (!cognitoEnabled()) {
     return NextResponse.json(
       { error: "SSO Cognito desabilitado." },
@@ -20,6 +25,10 @@ export async function GET() {
   }
 
   try {
+    const resume =
+      request.nextUrl.searchParams.get("resume") === "1" ||
+      request.cookies.get(REAUTH_COOKIE)?.value === "1";
+    const prompt: AuthorizePrompt = resume ? "login" : "none";
     const { verifier, challenge } = createPkcePair();
     const state = createOAuthState();
     const nonce = createNonce();
@@ -27,24 +36,22 @@ export async function GET() {
       state,
       nonce,
       codeChallenge: challenge,
+      prompt,
     });
 
     const response = NextResponse.redirect(authorizeUrl);
-    response.cookies.set(
-      OAUTH_COOKIE,
-      JSON.stringify({
-        state,
-        nonce,
-        code_verifier: verifier,
-      }),
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase() === "true",
-        path: "/",
-        maxAge: 600,
-      },
-    );
+    response.cookies.set(REAUTH_COOKIE, "", reauthCookieOptions(0));
+    response.cookies.set(OAUTH_COOKIE, encodeOAuthCookie({
+      state,
+      nonce,
+      code_verifier: verifier,
+    }), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: cookieSecure(),
+      path: "/",
+      maxAge: 600,
+    });
     return response;
   } catch (error) {
     const message =

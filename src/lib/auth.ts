@@ -103,7 +103,7 @@ function isLocalHost(host: string) {
 }
 
 async function shouldUseSecureCookie() {
-  const configuredValue = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+  const configuredValue = process.env["AUTH_COOKIE_SECURE"]?.trim().toLowerCase();
 
   if (configuredValue === "true") {
     return true;
@@ -159,7 +159,7 @@ function getBearerTokenFromAuthorizationHeader(
 }
 
 function isAuthDebugEnabled() {
-  return process.env.AUTH_DEBUG?.trim().toLowerCase() === "true";
+  return process.env["AUTH_DEBUG"]?.trim().toLowerCase() === "true";
 }
 
 function debugAuth(message: string, details?: Record<string, unknown>) {
