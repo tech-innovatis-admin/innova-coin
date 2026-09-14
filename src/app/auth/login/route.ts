@@ -1,61 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as client from "openid-client";
 
-import { cognitoEnabled } from "@/lib/authMode";
+import { brokerEnabled, centralOidcConfigured } from "@/lib/auth/authMode";
 import {
-  buildAuthorizeUrl,
-  CognitoConfigError,
+  buildCentralAuthorizeUrl,
+  CentralOidcConfigError,
   cookieSecure,
-  createNonce,
-  createOAuthState,
-  createPkcePair,
-  encodeOAuthCookie,
-  REAUTH_COOKIE,
-  reauthCookieOptions,
-  type AuthorizePrompt,
-} from "@/lib/cognitoOidc";
+  encryptTransaction,
+  publicAppOrigin,
+  TRANSACTION_COOKIE,
+  TRANSACTION_MAX_AGE,
+} from "@/lib/auth/centralOidc";
+import { safeReturnTo } from "@/lib/auth/redirectTarget";
+import { ADMIN_HOME_PATH, LOGIN_PATH } from "@/lib/platformAccess";
 
-const OAUTH_COOKIE = "innovacoin_oauth";
+function sessionCookieOptions(maxAge = 0) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: cookieSecure(),
+    path: "/",
+    maxAge,
+  };
+}
 
 export async function GET(request: NextRequest) {
-  if (!cognitoEnabled()) {
-    return NextResponse.json(
-      { error: "SSO Cognito desabilitado." },
-      { status: 404 },
-    );
+  if (!brokerEnabled() || !centralOidcConfigured()) {
+    return NextResponse.redirect(new URL(LOGIN_PATH, publicAppOrigin(request)));
   }
 
   try {
-    const resume =
-      request.nextUrl.searchParams.get("resume") === "1" ||
-      request.cookies.get(REAUTH_COOKIE)?.value === "1";
-    const prompt: AuthorizePrompt = resume ? "login" : "none";
-    const { verifier, challenge } = createPkcePair();
-    const state = createOAuthState();
-    const nonce = createNonce();
-    const authorizeUrl = buildAuthorizeUrl({
+    const returnTo = safeReturnTo(
+      request.nextUrl.searchParams.get("returnTo"),
+      ADMIN_HOME_PATH,
+    );
+
+    const codeVerifier = client.randomPKCECodeVerifier();
+    const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+    const state = client.randomState();
+    const nonce = client.randomNonce();
+    const authorizeUrl = await buildCentralAuthorizeUrl({
       state,
       nonce,
-      codeChallenge: challenge,
-      prompt,
+      codeChallenge,
     });
 
     const response = NextResponse.redirect(authorizeUrl);
-    response.cookies.set(REAUTH_COOKIE, "", reauthCookieOptions(0));
-    response.cookies.set(OAUTH_COOKIE, encodeOAuthCookie({
-      state,
-      nonce,
-      code_verifier: verifier,
-    }), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: cookieSecure(),
-      path: "/",
-      maxAge: 600,
-    });
+    response.cookies.set(
+      TRANSACTION_COOKIE,
+      await encryptTransaction({
+        state,
+        nonce,
+        code_verifier: codeVerifier,
+        returnTo,
+      }),
+      sessionCookieOptions(TRANSACTION_MAX_AGE),
+    );
     return response;
   } catch (error) {
     const message =
-      error instanceof CognitoConfigError
+      error instanceof CentralOidcConfigError
         ? error.message
         : "Falha ao iniciar SSO.";
     return NextResponse.json({ error: message }, { status: 500 });
