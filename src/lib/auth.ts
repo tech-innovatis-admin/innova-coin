@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { NextResponse } from "next/server";
 
-import { credentialsEnabled } from "@/lib/authMode";
+import { credentialsEnabled } from "@/lib/auth/authMode";
 import { getDbPool } from "@/lib/db";
 import {
   ADMIN_HOME_PATH,
@@ -19,6 +19,7 @@ import {
   readSessionPayload,
   SESSION_COOKIE_NAME,
   SESSION_DURATION_SECONDS,
+  type BrokerSessionFields,
   type SessionUser,
 } from "@/lib/sessionToken";
 
@@ -185,7 +186,7 @@ function mapSessionUser(row: SessionUserRow): SessionUser {
   } satisfies SessionUser;
 }
 
-async function getUserSnapshotById(userId: string) {
+export async function getUserSnapshotById(userId: string) {
   if (!/^\d+$/.test(userId.trim())) {
     return null;
   }
@@ -639,9 +640,14 @@ export async function deleteSession() {
 export async function setSessionCookie(
   response: NextResponse,
   user: SessionUser,
+  brokerOrToken?: BrokerSessionFields | string,
   sessionToken?: string,
 ) {
-  const session = sessionToken ?? (await createSignedSessionToken(user));
+  const broker =
+    brokerOrToken && typeof brokerOrToken === "object" ? brokerOrToken : undefined;
+  const token =
+    typeof brokerOrToken === "string" ? brokerOrToken : sessionToken;
+  const session = token ?? (await createSignedSessionToken(user, broker));
   const options = await getSessionCookieOptions();
 
   response.cookies.set(SESSION_COOKIE_NAME, session, options);
@@ -652,6 +658,7 @@ export async function setSessionCookie(
     platforms: user.platforms,
     innovacoinRoles: user.innovacoinRoles,
     mustChangePassword: user.mustChangePassword,
+    broker: Boolean(broker),
   });
 }
 

@@ -19,10 +19,11 @@ type LoginResponse =
 type AuthModeResponse = {
   mode: string;
   credentials: boolean;
-  cognito: boolean;
+  sso: boolean;
 };
 
 const SSO_ERROR_MESSAGES: Record<string, string> = {
+  broker_denied: "Login SSO cancelado ou negado.",
   cognito_denied: "Login SSO cancelado ou negado.",
   missing_code: "Resposta SSO incompleta. Tente novamente.",
   missing_oauth_cookie: "Sessão SSO expirou. Inicie o login de novo.",
@@ -63,7 +64,7 @@ export default function LoginForm() {
         const data = (await response.json()) as AuthModeResponse;
         if (!cancelled) {
           setShowCredentials(Boolean(data.credentials));
-          setShowSso(Boolean(data.cognito));
+          setShowSso(Boolean(data.sso));
         }
       } catch {
         // keep legacy defaults

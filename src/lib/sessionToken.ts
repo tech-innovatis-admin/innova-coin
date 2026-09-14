@@ -29,8 +29,18 @@ export type SessionTokenReadResult = {
   hasMustChangePasswordClaim: boolean;
 };
 
+export type BrokerSessionFields = {
+  sid: string;
+  authz_version: number;
+  sub: string;
+};
+
 type SessionPayload = JWTPayload & {
   user: SessionTokenUser;
+  auth?: "broker";
+  sid?: string;
+  authz_version?: number;
+  sub?: string;
 };
 
 function getSessionSecret() {
@@ -65,16 +75,71 @@ function normalizeTokenArray(value: unknown) {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
-export async function createSessionToken(user: SessionUser) {
-  return new SignJWT({ user: toSessionTokenUser(user) })
+function applyBrokerFields(
+  payload: SessionPayload,
+  broker?: BrokerSessionFields,
+): SessionPayload {
+  if (!broker) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    auth: "broker",
+    sid: broker.sid,
+    authz_version: broker.authz_version,
+    sub: broker.sub,
+  };
+}
+
+function brokerFieldsFromPayload(payload: SessionPayload): BrokerSessionFields | null {
+  if (payload.auth !== "broker") {
+    return null;
+  }
+
+  const sid = typeof payload.sid === "string" ? payload.sid : "";
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  const authzVersion =
+    typeof payload.authz_version === "number"
+      ? payload.authz_version
+      : typeof payload.authz_version === "string"
+        ? Number.parseInt(payload.authz_version, 10)
+        : NaN;
+
+  if (!sid || !sub || !Number.isFinite(authzVersion)) {
+    return null;
+  }
+
+  return {
+    sid,
+    sub,
+    authz_version: authzVersion,
+  };
+}
+
+export async function createSessionToken(
+  user: SessionUser,
+  broker?: BrokerSessionFields,
+) {
+  const payload = applyBrokerFields(
+    { user: toSessionTokenUser(user) },
+    broker,
+  );
+
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(SESSION_DURATION)
     .sign(getSessionSecret());
 }
 
-export async function createSessionTokenFromTokenUser(user: SessionTokenUser) {
-  return new SignJWT({ user })
+export async function createSessionTokenFromTokenUser(
+  user: SessionTokenUser,
+  broker?: BrokerSessionFields,
+) {
+  const payload = applyBrokerFields({ user }, broker);
+
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(SESSION_DURATION)
@@ -103,6 +168,11 @@ function readSessionUserFromPayload(payload: SessionPayload): SessionTokenReadRe
 export async function readSessionUserStateFromToken(token: string) {
   const payload = await readSessionPayload(token);
   return readSessionUserFromPayload(payload);
+}
+
+export async function readBrokerFieldsFromToken(token: string) {
+  const payload = await readSessionPayload(token);
+  return brokerFieldsFromPayload(payload);
 }
 
 export async function readSessionUserFromToken(token: string) {

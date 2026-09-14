@@ -1,4 +1,4 @@
-import { unauthenticatedLoginPath } from "@/lib/authMode";
+import { unauthenticatedLoginPath } from "@/lib/auth/authMode";
 
 export const LOGIN_PATH = "/login";
 export const FIRST_ACCESS_PATH = "/primeiro-acesso";

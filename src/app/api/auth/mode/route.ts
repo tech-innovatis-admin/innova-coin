@@ -1,16 +1,22 @@
+import { NextResponse } from "next/server";
+
 import {
-  cognitoEnabled,
+  brokerEnabled,
+  centralOidcConfigured,
   credentialsEnabled,
   getAuthMode,
-} from "@/lib/authMode";
-import { jsonNoStore } from "../_lib/http";
+  INNOVACOIN_PLATFORM_TAG,
+  ssoEnabled,
+} from "@/lib/auth/authMode";
 
 export async function GET() {
   const mode = getAuthMode();
-  return jsonNoStore({
+  return NextResponse.json({
     mode,
     credentials: credentialsEnabled(mode),
-    cognito: cognitoEnabled(mode),
-    platformCode: process.env["PLATFORM_CODE"] || "innovacoin",
+    broker: brokerEnabled(mode),
+    sso: ssoEnabled(mode),
+    centralConfigured: centralOidcConfigured(),
+    platformCode: INNOVACOIN_PLATFORM_TAG,
   });
 }

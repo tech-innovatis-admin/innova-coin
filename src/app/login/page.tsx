@@ -1,9 +1,6 @@
 import { AppHeader, LoginForm, ParticlesBackground } from "@/components";
 import { getSessionUser } from "@/lib/auth";
-import { cognitoEnabled } from "@/lib/authMode";
-import { REAUTH_COOKIE } from "@/lib/cognitoOidc";
 import { getRedirectTargetForPathname, LOGIN_PATH } from "@/lib/platformAccess";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export const metadata = {
@@ -11,15 +8,7 @@ export const metadata = {
   description: "",
 };
 
-
 export default async function LoginPage() {
-  if (cognitoEnabled()) {
-    const jar = await cookies();
-    if (jar.get(REAUTH_COOKIE)?.value === "1") {
-      redirect("/auth/login");
-    }
-  }
-
   const sessionUser = await getSessionUser();
   const redirectTo = getRedirectTargetForPathname(sessionUser, LOGIN_PATH);
 

@@ -1,9 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { brokerEnabled } from "@/lib/auth/authMode";
+import { validateBrokerSession } from "@/lib/auth/brokerIntrospection";
 import { getDbPool } from "@/lib/db";
 import { getRedirectTargetForPathname } from "@/lib/platformAccess";
 import {
   createSessionTokenFromTokenUser,
+  readBrokerFieldsFromToken,
   readSessionUserStateFromToken,
   SESSION_COOKIE_NAME,
   SESSION_DURATION_SECONDS,
@@ -85,6 +88,16 @@ function attachSessionCookie(
   });
 }
 
+function clearSessionCookie(response: NextResponse, request: NextRequest) {
+  response.cookies.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: shouldUseSecureCookie(request),
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 async function readMustChangePasswordByUserId(userId: string) {
   if (!/^\d+$/.test(userId.trim())) {
     return null;
@@ -122,7 +135,24 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
   }
 
   try {
+    if (brokerEnabled()) {
+      const brokerSession = await readBrokerFieldsFromToken(token);
+      if (brokerSession) {
+        const active = await validateBrokerSession({
+          ...brokerSession,
+          auth: "broker",
+        });
+        if (!active) {
+          return {
+            user: null,
+            refreshedToken: null,
+          };
+        }
+      }
+    }
+
     const sessionState = await readSessionUserStateFromToken(token);
+    const brokerFields = await readBrokerFieldsFromToken(token);
 
     if (sessionState.hasMustChangePasswordClaim) {
       return {
@@ -149,7 +179,10 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
 
     return {
       user: refreshedUser,
-      refreshedToken: await createSessionTokenFromTokenUser(refreshedUser),
+      refreshedToken: await createSessionTokenFromTokenUser(
+        refreshedUser,
+        brokerFields ?? undefined,
+      ),
     };
   } catch {
     return {
@@ -161,6 +194,11 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (pathname === "/auth/login" || pathname.startsWith("/auth/")) {
+    return NextResponse.next();
+  }
+
   const sessionState = await readProxySessionUser(request);
   const redirectTo = getRedirectTargetForPathname(sessionState.user, pathname);
 
@@ -171,11 +209,13 @@ export async function proxy(request: NextRequest) {
 
   if (sessionState.refreshedToken) {
     attachSessionCookie(response, request, sessionState.refreshedToken);
+  } else if (!sessionState.user && request.cookies.get(SESSION_COOKIE_NAME)?.value) {
+    clearSessionCookie(response, request);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|auth|_next/static|_next/image|.*\\..*$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|.*\\..*$).*)"],
 };
