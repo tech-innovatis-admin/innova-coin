@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import UserAvatar from "./UserAvatar";
 
@@ -36,37 +35,16 @@ export default function AppHeader({
   userPhoto,
   headerAction,
 }: AppHeaderProps) {
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const hideBrandTextOnMobile = profileMode !== "guest";
 
-  async function handleLogout() {
+  function handleLogout() {
     if (isLoggingOut) {
       return;
     }
 
     setIsLoggingOut(true);
-
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
-
-      router.replace("/login");
-      router.refresh();
-    } catch {
-      window.location.assign("/login");
-    } finally {
-      setIsLoggingOut(false);
-    }
+    window.location.href = "/auth/logout";
   }
 
   function renderLogoutButton() {
