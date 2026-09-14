@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "node --experimental-strip-types --test ./src/lib/auth/*.test.mts"
   },
   "dependencies": {
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "next": "16.2.1",
+    "openid-client": "^6.8.7",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
