@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { brokerEnabled } from "@/lib/auth/authMode";
-import { validateBrokerSession } from "@/lib/auth/brokerIntrospection";
+import { guardRequest, isApiRequest } from "@/lib/auth/sessionGuard";
 import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 import { getDbPool } from "@/lib/db";
-import { getRedirectTargetForPathname } from "@/lib/platformAccess";
+import { getRedirectTargetForPathname, isProtectedAppPath } from "@/lib/platformAccess";
 import {
   createSessionTokenFromTokenUser,
   readBrokerFieldsFromToken,
@@ -22,6 +22,13 @@ type ProxySessionUserState = {
 type ProxyPasswordStateRow = {
   must_change_password: boolean | null;
 };
+
+/** Defesa em profundidade; o matcher ja exclui as mesmas rotas. */
+const PUBLIC_AUTH_API = /^\/api\/auth\/(?:login|mode|logout)(?:\/|$)/;
+
+function isPublicAuthApi(pathname: string): boolean {
+  return PUBLIC_AUTH_API.test(pathname);
+}
 
 function shouldUseSecureCookie(request: NextRequest) {
   return resolveCookieSecure(request.headers);
@@ -88,23 +95,6 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
   }
 
   try {
-    if (brokerEnabled()) {
-      const brokerSession = await readBrokerFieldsFromToken(token);
-      if (brokerSession) {
-        if (
-          (await validateBrokerSession({
-            ...brokerSession,
-            auth: "broker",
-          })) !== "active"
-        ) {
-          return {
-            user: null,
-            refreshedToken: null,
-          };
-        }
-      }
-    }
-
     const sessionState = await readSessionUserStateFromToken(token);
     const brokerFields = await readBrokerFieldsFromToken(token);
 
@@ -146,14 +136,50 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
   }
 }
 
+function applySessionCookieSideEffects(
+  response: NextResponse,
+  request: NextRequest,
+  sessionState: ProxySessionUserState,
+) {
+  if (sessionState.refreshedToken) {
+    attachSessionCookie(response, request, sessionState.refreshedToken);
+  } else if (!sessionState.user && request.cookies.get(SESSION_COOKIE_NAME)?.value) {
+    clearSessionCookie(response, request);
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (pathname === "/auth/login" || pathname.startsWith("/auth/")) {
+  if (pathname.startsWith("/auth/")) {
     return NextResponse.next();
   }
 
+  const api = isApiRequest(pathname);
+
+  if (!brokerEnabled()) {
+    if (api) {
+      return NextResponse.next();
+    }
+  } else {
+    const needsGuard =
+      isProtectedAppPath(pathname) || (api && !isPublicAuthApi(pathname));
+    if (needsGuard) {
+      const guarded = await guardRequest(request);
+      if (guarded) {
+        return guarded;
+      }
+    }
+  }
+
   const sessionState = await readProxySessionUser(request);
+
+  if (api) {
+    const response = NextResponse.next();
+    applySessionCookieSideEffects(response, request, sessionState);
+    return response;
+  }
+
   const redirectTo = getRedirectTargetForPathname(sessionState.user, pathname);
 
   const response =
@@ -161,15 +187,13 @@ export async function proxy(request: NextRequest) {
       ? NextResponse.redirect(new URL(redirectTo, request.url))
       : NextResponse.next();
 
-  if (sessionState.refreshedToken) {
-    attachSessionCookie(response, request, sessionState.refreshedToken);
-  } else if (!sessionState.user && request.cookies.get(SESSION_COOKIE_NAME)?.value) {
-    clearSessionCookie(response, request);
-  }
+  applySessionCookieSideEffects(response, request, sessionState);
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\..*$).*)"],
+  matcher: [
+    "/((?!api/auth/(?:login|mode|logout)(?:/|$)|_next/static|_next/image|favicon\\.ico$|(?:(?!api/).)*\\.(?:png|jpg|svg)$).*)",
+  ],
 };
