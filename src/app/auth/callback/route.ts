@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { buildAuthErrorRedirect } from "@/lib/auth/authErrorRedirect";
 import {
   CentralOidcConfigError,
   cookieSecure,
@@ -11,12 +12,10 @@ import {
 } from "@/lib/auth/centralOidc";
 import { safeReturnTo } from "@/lib/auth/redirectTarget";
 import { getUserSnapshotById, setSessionCookie } from "@/lib/auth";
-import { getPostLoginPath, LOGIN_PATH } from "@/lib/platformAccess";
+import { getPostLoginPath } from "@/lib/platformAccess";
 
 function errorRedirect(request: NextRequest, code: string) {
-  const url = new URL(LOGIN_PATH, publicAppOrigin(request));
-  url.searchParams.set("sso_error", code);
-  return NextResponse.redirect(url);
+  return buildAuthErrorRedirect(request, publicAppOrigin(request), code);
 }
 
 export async function GET(request: NextRequest) {

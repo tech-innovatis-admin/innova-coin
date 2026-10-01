@@ -1,4 +1,4 @@
-/** Home pública do Hub Innovatis — destino do "Sair" das plataformas (CU-17tpepcf58f). */
+/** Home pública do Hub Innovatis — destino do "Sair" das plataformas. */
 export const DEFAULT_HUB_HOME_URL = "https://hub.innovatismc.com/";
 
 function isAllowedHttpHost(hostname: string): boolean {
