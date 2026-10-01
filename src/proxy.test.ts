@@ -80,6 +80,9 @@ describe("proxy de autenticacao", () => {
     expect(matchesProxy("/api/auth/logout")).toBe(false);
     expect(matchesProxy("/_next/static/x.js")).toBe(false);
     expect(matchesProxy("/logo.png")).toBe(false);
+    expect(matchesProxy("/favicon.ico")).toBe(false);
+    expect(matchesProxy("/images/fundo.webp")).toBe(false);
+    expect(matchesProxy("/api/arquivo.webp")).toBe(true);
   });
 
   it("pagina publica / sem cookie segue sem redirect", async () => {
