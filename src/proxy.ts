@@ -138,11 +138,12 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
     if (brokerEnabled()) {
       const brokerSession = await readBrokerFieldsFromToken(token);
       if (brokerSession) {
-        const active = await validateBrokerSession({
-          ...brokerSession,
-          auth: "broker",
-        });
-        if (!active) {
+        if (
+          (await validateBrokerSession({
+            ...brokerSession,
+            auth: "broker",
+          })) !== "active"
+        ) {
           return {
             user: null,
             refreshedToken: null,
