@@ -11,6 +11,24 @@ OIDC via Hub (`openid-client`, Authorization Code + PKCE). Sessão continua no c
 5. Emite cookie de sessão da app com campos broker (`sid`, `authz_version`, `sub`)
 6. Proxy valida sessão broker via introspection quando `AUTH_MODE` habilita SSO
 
+## Sessão central (`hybrid` e `broker`)
+
+O `src/proxy.ts` chama `guardRequest` (`src/lib/auth/sessionGuard.ts`) em páginas protegidas e em todas as rotas `/api/*`, exceto `/api/auth/login`, `/api/auth/mode` e `/api/auth/logout`. A introspection no Hub tem três resultados:
+
+| Resultado | Página | API | Navegação cliente (RSC, prefetch, `Next-Action`) |
+|---|---|---|---|
+| `active` | segue | segue | segue |
+| `inactive` | `303` para `/auth/login?returnTo=` e expira o cookie | `401 {"error":"session_inactive"}` | `401` sem `Location` |
+| `unavailable` | `503` HTML com `Retry-After: 30` | `503 {"error":"auth_unavailable"}` | `503` |
+
+- Timeout de 3 s; cache de até 60 s apenas para `active` e `inactive`. 401/403 da introspection contam como `inactive`; 5xx, 429, rede e timeout, como `unavailable`, sem apagar cookies.
+- Cookie sem `sid` conta como `inactive` e força um novo login.
+- O cookie de sessão só é expirado quando a requisição trouxe um.
+- O flag `Secure` dos cookies vem de `resolveCookieSecure` (`src/lib/auth/cookieFlags.ts`): `AUTH_COOKIE_SECURE`, depois `x-forwarded-proto`, depois `NODE_ENV=production` com host não local.
+- `GET /auth/login` responde `503` com a mesma página quando a descoberta OIDC falha (timeout de 3 s); configuração ausente continua `500`.
+- Erros do callback vão para `/auth/error?code=` com mensagens fixas, "Entrar novamente" e "Voltar ao Hub", e expiram apenas o cookie de transação OAuth.
+- "Sair" (`/auth/logout`) expira os cookies e redireciona (`303`) para `HUB_HOME_URL`, sem encerrar a sessão do Hub. Em `legacy`, volta para `/login`.
+
 ## Feature flag
 
 | `AUTH_MODE` | Senha | SSO Hub |
@@ -24,7 +42,9 @@ OIDC via Hub (`openid-client`, Authorization Code + PKCE). Sessão continua no c
 - `CENTRAL_OIDC_ISSUER` (default `https://hub.innovatismc.com`)
 - `CENTRAL_OIDC_CLIENT_ID` (default `innova-coin`)
 - `CENTRAL_OIDC_CLIENT_SECRET` (obrigatório para SSO)
-- `CENTRAL_OIDC_REDIRECT_URI` / `CENTRAL_OIDC_LOGOUT_URI` (opcionais)
+- `CENTRAL_OIDC_REDIRECT_URI` (opcional; `CENTRAL_OIDC_LOGOUT_URI` não é mais usado pelo "Sair")
+- `HUB_HOME_URL` (destino do "Sair"; default `https://hub.innovatismc.com/`; só `https`, ou `http` em localhost)
+- `AUTH_COOKIE_SECURE` (`true`/`false`; força o flag `Secure` dos cookies)
 - `APP_URL`
 - `SSO_BRIDGE_SECRET` ou `AUTH_SECRET` (cookie de transaction OAuth)
 
