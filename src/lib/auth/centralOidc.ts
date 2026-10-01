@@ -298,15 +298,6 @@ export async function exchangeCentralCallback(input: {
   }
 }
 
-export function buildCentralLogoutUrl(postLogoutRedirectUri?: string) {
-  const cfg = getCentralOidcConfig();
-  const params = new URLSearchParams({
-    client_id: cfg.clientId,
-    post_logout_redirect_uri: postLogoutRedirectUri || cfg.logoutUri,
-  });
-  return `${cfg.issuer}/oidc/logout?${params.toString()}`;
-}
-
 export function cookieSecure(headers: Headers) {
   return resolveCookieSecure(headers);
 }
