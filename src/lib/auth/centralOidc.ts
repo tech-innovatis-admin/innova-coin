@@ -105,11 +105,16 @@ function encryptionKey(): Uint8Array {
   return createHash("sha256").update(secret).digest();
 }
 
-function discoveryOptions(issuer: string): client.DiscoveryRequestOptions | undefined {
+export const DISCOVERY_TIMEOUT_SECONDS = 3;
+
+function discoveryOptions(issuer: string): client.DiscoveryRequestOptions {
   if (!issuer.startsWith("http://")) {
-    return undefined;
+    return { timeout: DISCOVERY_TIMEOUT_SECONDS };
   }
-  return { execute: [client.allowInsecureRequests] };
+  return {
+    timeout: DISCOVERY_TIMEOUT_SECONDS,
+    execute: [client.allowInsecureRequests],
+  };
 }
 
 export async function getOidcConfiguration(): Promise<client.Configuration> {
@@ -128,6 +133,8 @@ export async function getOidcConfiguration(): Promise<client.Configuration> {
   if (cfg.issuer.startsWith("http://")) {
     client.allowInsecureRequests(cachedConfig);
   }
+  // Discovery timeout must not apply to token exchange and other OIDC calls.
+  cachedConfig.timeout = undefined;
   cachedIssuer = cfg.issuer;
   return cachedConfig;
 }
