@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { brokerEnabled } from "@/lib/auth/authMode";
 import { validateBrokerSession } from "@/lib/auth/brokerIntrospection";
+import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 import { getDbPool } from "@/lib/db";
 import { getRedirectTargetForPathname } from "@/lib/platformAccess";
 import {
@@ -22,56 +23,8 @@ type ProxyPasswordStateRow = {
   must_change_password: boolean | null;
 };
 
-function isLocalHost(host: string) {
-  const trimmedHost = host.trim().toLowerCase();
-  const hostname = trimmedHost.startsWith("[")
-    ? trimmedHost.slice(1, Math.max(trimmedHost.indexOf("]"), 1))
-    : trimmedHost.split(":")[0] ?? "";
-
-  if (!hostname) {
-    return false;
-  }
-
-  if (hostname === "localhost" || hostname === "::1" || hostname.endsWith(".local")) {
-    return true;
-  }
-
-  return (
-    hostname === "0.0.0.0" ||
-    hostname.startsWith("127.") ||
-    hostname.startsWith("10.") ||
-    hostname.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
-  );
-}
-
 function shouldUseSecureCookie(request: NextRequest) {
-  const configuredValue = process.env["AUTH_COOKIE_SECURE"]?.trim().toLowerCase();
-
-  if (configuredValue === "true") {
-    return true;
-  }
-
-  if (configuredValue === "false") {
-    return false;
-  }
-
-  const forwardedProto = request.headers
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim()
-    .toLowerCase();
-  const host =
-    request.headers.get("x-forwarded-host")?.trim() ||
-    request.headers.get("host")?.trim() ||
-    request.nextUrl.host ||
-    "";
-
-  if (forwardedProto) {
-    return forwardedProto === "https";
-  }
-
-  return process.env.NODE_ENV === "production" && host !== "" && !isLocalHost(host);
+  return resolveCookieSecure(request.headers);
 }
 
 function attachSessionCookie(

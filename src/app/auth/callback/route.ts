@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(TRANSACTION_COOKIE, "", {
       httpOnly: true,
       sameSite: "lax",
-      secure: cookieSecure(),
+      secure: cookieSecure(request.headers),
       path: "/",
       maxAge: 0,
     });

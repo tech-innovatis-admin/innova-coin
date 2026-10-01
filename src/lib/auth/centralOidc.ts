@@ -4,6 +4,7 @@ import { EncryptJWT, jwtDecrypt } from "jose";
 import * as client from "openid-client";
 
 import { TRANSACTION_COOKIE as TRANSACTION_COOKIE_NAME } from "@/lib/auth/config";
+import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 
 export class CentralOidcConfigError extends Error {
   constructor(message: string) {
@@ -306,13 +307,8 @@ export function buildCentralLogoutUrl(postLogoutRedirectUri?: string) {
   return `${cfg.issuer}/oidc/logout?${params.toString()}`;
 }
 
-export function cookieSecure() {
-  const flag = env("AUTH_COOKIE_SECURE")?.toLowerCase();
-  if (flag === "true") return true;
-  if (flag === "false") return false;
-  const origin = env("APP_URL") || "";
-  if (origin.startsWith("https://")) return true;
-  return env("NODE_ENV") === "production";
+export function cookieSecure(headers: Headers) {
+  return resolveCookieSecure(headers);
 }
 
 const BIND_HOSTS = new Set(["0.0.0.0", "::", "[::]"]);

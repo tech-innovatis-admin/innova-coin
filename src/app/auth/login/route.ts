@@ -14,11 +14,11 @@ import {
 import { safeReturnTo } from "@/lib/auth/redirectTarget";
 import { ADMIN_HOME_PATH, LOGIN_PATH } from "@/lib/platformAccess";
 
-function sessionCookieOptions(maxAge = 0) {
+function sessionCookieOptions(request: NextRequest, maxAge = 0) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: cookieSecure(),
+    secure: cookieSecure(request.headers),
     path: "/",
     maxAge,
   };
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         code_verifier: codeVerifier,
         returnTo,
       }),
-      sessionCookieOptions(TRANSACTION_MAX_AGE),
+      sessionCookieOptions(request, TRANSACTION_MAX_AGE),
     );
     return response;
   } catch (error) {
