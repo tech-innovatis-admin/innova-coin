@@ -83,7 +83,7 @@ export async function evaluateSession(
 
   const brokerSession = readBrokerSessionFromPayload(payload);
   if (!brokerSession) {
-    if (brokerOnly()) {
+    if (brokerOnly() || payload.auth === "broker") {
       return { state: "inactive", hadCookie };
     }
     return { state: "active", hadCookie };

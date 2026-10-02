@@ -183,7 +183,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (api) {
+  if (api || (pathname.startsWith("/auth/") && isPublicProxyPath(pathname))) {
     return NextResponse.next();
   }
 

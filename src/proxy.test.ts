@@ -115,6 +115,20 @@ describe("proxy de autenticacao", () => {
     }
   });
 
+  it("rotas publicas de /auth nao recebem cookie do proxy", async () => {
+    const restore = brokerEnv();
+    try {
+      const token = await brokerSessionToken();
+      for (const path of ["/auth/login", "/auth/logout", "/auth/callback", "/auth/error"]) {
+        const response = await proxy(request(path, { token }));
+        expect(response.headers.getSetCookie(), path).toEqual([]);
+        expect(response.headers.get("location"), path).toBeNull();
+      }
+    } finally {
+      restore();
+    }
+  });
+
   it("/auth/qualquer e pagina nova sao guardados com sessao inativa", async () => {
     const restore = brokerEnv();
     broker.setBehaviour("inactive");
