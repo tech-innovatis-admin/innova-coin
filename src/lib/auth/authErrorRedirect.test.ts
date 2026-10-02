@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import { TRANSACTION_COOKIE } from "@/lib/auth/config";
 import { SESSION_COOKIE_NAME } from "@/lib/sessionToken";
 import { buildAuthErrorRedirect } from "./authErrorRedirect";
+
+const savedAuthCookieSecure = process.env.AUTH_COOKIE_SECURE;
+
+afterEach(() => {
+  if (savedAuthCookieSecure === undefined) {
+    delete process.env.AUTH_COOKIE_SECURE;
+  } else {
+    process.env.AUTH_COOKIE_SECURE = savedAuthCookieSecure;
+  }
+  vi.unstubAllEnvs();
+});
 
 function expiredCookieNames(response: Response): string[] {
   const headers =
@@ -47,6 +58,7 @@ describe("buildAuthErrorRedirect", () => {
   });
 
   it("usa Secure quando x-forwarded-proto e https", () => {
+    vi.stubEnv("AUTH_COOKIE_SECURE", undefined);
     const request = new NextRequest("http://127.0.0.1:3007/auth/callback", {
       headers: {
         host: "127.0.0.1:3007",
