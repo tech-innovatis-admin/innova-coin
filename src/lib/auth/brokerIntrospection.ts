@@ -1,4 +1,4 @@
-export const INTROSPECTION_CACHE_MS = 60_000;
+export const INTROSPECTION_CACHE_MS = 15_000;
 export const INTROSPECTION_TIMEOUT_MS = 3_000;
 
 export type BrokerSessionState = "active" | "inactive" | "unavailable";
