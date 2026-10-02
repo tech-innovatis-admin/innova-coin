@@ -13,7 +13,7 @@ OIDC via Hub (`openid-client`, Authorization Code + PKCE). Sessão continua no c
 
 ## Sessão central (`hybrid` e `broker`)
 
-O `src/proxy.ts` chama `guardRequest` (`src/lib/auth/sessionGuard.ts`) em páginas protegidas e em todas as rotas `/api/*`, exceto `/api/auth/login`, `/api/auth/mode` e `/api/auth/logout`. A introspection no Hub tem três resultados:
+O `src/proxy.ts` chama `guardRequest` (`src/lib/auth/sessionGuard.ts`) em **todas** as rotas que o matcher alcança, exceto os caminhos públicos fixos (`/`, `/login`, `/auth/login`, `/auth/logout`, `/auth/callback`, `/auth/error`) e as APIs `/api/auth/login`, `/api/auth/mode` e `/api/auth/logout`. Requisições `/api/*` passam pelo guard quando aplicável, mas **não** executam `readProxySessionUser` (sem refresh de cookie nem expiração por falha de banco). A introspection no Hub tem três resultados:
 
 | Resultado | Página | API | Navegação cliente (RSC, prefetch, `Next-Action`) |
 |---|---|---|---|
@@ -22,7 +22,7 @@ O `src/proxy.ts` chama `guardRequest` (`src/lib/auth/sessionGuard.ts`) em págin
 | `unavailable` | `503` HTML com `Retry-After: 30` | `503 {"error":"auth_unavailable"}` | `503` |
 
 - Timeout de 3 s; cache de até 60 s apenas para `active` e `inactive`. 401/403 da introspection contam como `inactive`; 5xx, 429, rede e timeout, como `unavailable`, sem apagar cookies.
-- Cookie sem `sid` conta como `inactive` e força um novo login.
+- Em `AUTH_MODE=broker`, cookie sem campos broker (`sid`, etc.) conta como `inactive`. Em `hybrid`, sessão por senha (sem `sid`) permanece `active` só com validação de assinatura; sessão com campos broker segue introspeção.
 - O cookie de sessão só é expirado quando a requisição trouxe um.
 - O flag `Secure` dos cookies vem de `resolveCookieSecure` (`src/lib/auth/cookieFlags.ts`): `AUTH_COOKIE_SECURE`, depois `x-forwarded-proto`, depois `NODE_ENV=production` com host não local.
 - `GET /auth/login` responde `503` com a mesma página quando a descoberta OIDC falha (timeout de 3 s); configuração ausente continua `500`.
