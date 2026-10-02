@@ -11,7 +11,7 @@ import {
   withBrokerEnv,
   type MockBroker,
 } from "@/lib/auth/testBroker";
-import { config, proxy } from "@/proxy";
+import { config, isPublicProxyPath, proxy, PUBLIC_PROXY_PATHS } from "@/proxy";
 
 const BASE = "http://127.0.0.1:3007";
 
@@ -83,6 +83,68 @@ describe("proxy de autenticacao", () => {
     expect(matchesProxy("/favicon.ico")).toBe(false);
     expect(matchesProxy("/images/fundo.webp")).toBe(false);
     expect(matchesProxy("/api/arquivo.webp")).toBe(true);
+  });
+
+  it("lista fixa de caminhos publicos do proxy", () => {
+    expect([...PUBLIC_PROXY_PATHS].sort()).toEqual(
+      [
+        "/",
+        "/auth/callback",
+        "/auth/error",
+        "/auth/login",
+        "/auth/logout",
+        "/login",
+      ].sort(),
+    );
+    expect(isPublicProxyPath("/auth/login")).toBe(true);
+    expect(isPublicProxyPath("/auth/qualquer")).toBe(false);
+  });
+
+  it("caminhos publicos nao passam pelo guard com sessao inativa", async () => {
+    const restore = brokerEnv();
+    broker.setBehaviour("inactive");
+    try {
+      for (const path of PUBLIC_PROXY_PATHS) {
+        const response = await proxy(request(path));
+        expect(response.status, path).not.toBe(303);
+        const location = response.headers.get("location");
+        expect(location === null || !location.includes("/auth/login"), path).toBe(true);
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  it("/auth/qualquer e pagina nova sao guardados com sessao inativa", async () => {
+    const restore = brokerEnv();
+    broker.setBehaviour("inactive");
+    try {
+      for (const path of ["/auth/qualquer", "/pagina-nova"]) {
+        const response = await proxy(request(path));
+        expect(response.status, path).toBe(303);
+        const location = new URL(response.headers.get("location")!);
+        expect(location.pathname).toBe("/auth/login");
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  it("API com sessao ativa nao recebe Set-Cookie", async () => {
+    const restore = brokerEnv();
+    broker.setBehaviour("active");
+    clearIntrospectionCache();
+    try {
+      const token = await brokerSessionToken({
+        ...ADMIN_USER,
+        mustChangePassword: false,
+      });
+      const response = await proxy(request("/api/auth/me", { token }));
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.getSetCookie()).toEqual([]);
+    } finally {
+      restore();
+    }
   });
 
   it("pagina publica / sem cookie segue sem redirect", async () => {

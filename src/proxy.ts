@@ -4,7 +4,7 @@ import { brokerEnabled } from "@/lib/auth/authMode";
 import { guardRequest, isApiRequest } from "@/lib/auth/sessionGuard";
 import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 import { getDbPool } from "@/lib/db";
-import { getRedirectTargetForPathname, isProtectedAppPath } from "@/lib/platformAccess";
+import { getRedirectTargetForPathname } from "@/lib/platformAccess";
 import {
   createSessionTokenFromTokenUser,
   readBrokerFieldsFromToken,
@@ -26,8 +26,28 @@ type ProxyPasswordStateRow = {
 /** Defesa em profundidade; o matcher ja exclui as mesmas rotas. */
 const PUBLIC_AUTH_API = /^\/api\/auth\/(?:login|mode|logout)(?:\/|$)/;
 
+export const PUBLIC_PROXY_PATHS = new Set([
+  "/",
+  "/login",
+  "/auth/login",
+  "/auth/logout",
+  "/auth/callback",
+  "/auth/error",
+]);
+
+export function isPublicProxyPath(pathname: string): boolean {
+  return PUBLIC_PROXY_PATHS.has(pathname);
+}
+
 function isPublicAuthApi(pathname: string): boolean {
   return PUBLIC_AUTH_API.test(pathname);
+}
+
+function shouldGuardPath(pathname: string, api: boolean): boolean {
+  if (api && isPublicAuthApi(pathname)) {
+    return false;
+  }
+  return !isPublicProxyPath(pathname);
 }
 
 function shouldUseSecureCookie(request: NextRequest) {
@@ -150,35 +170,24 @@ function applySessionCookieSideEffects(
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
-  if (pathname.startsWith("/auth/")) {
-    return NextResponse.next();
-  }
-
   const api = isApiRequest(pathname);
 
   if (!brokerEnabled()) {
     if (api) {
       return NextResponse.next();
     }
-  } else {
-    const needsGuard =
-      isProtectedAppPath(pathname) || (api && !isPublicAuthApi(pathname));
-    if (needsGuard) {
-      const guarded = await guardRequest(request);
-      if (guarded) {
-        return guarded;
-      }
+  } else if (shouldGuardPath(pathname, api)) {
+    const guarded = await guardRequest(request);
+    if (guarded) {
+      return guarded;
     }
   }
 
-  const sessionState = await readProxySessionUser(request);
-
   if (api) {
-    const response = NextResponse.next();
-    applySessionCookieSideEffects(response, request, sessionState);
-    return response;
+    return NextResponse.next();
   }
+
+  const sessionState = await readProxySessionUser(request);
 
   const redirectTo = getRedirectTargetForPathname(sessionState.user, pathname);
 
