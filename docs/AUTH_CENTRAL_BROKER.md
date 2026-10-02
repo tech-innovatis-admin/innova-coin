@@ -21,7 +21,7 @@ O `src/proxy.ts` chama `guardRequest` (`src/lib/auth/sessionGuard.ts`) em **toda
 | `inactive` | `303` para `/auth/login?returnTo=` e expira o cookie | `401 {"error":"session_inactive"}` | `401` sem `Location` |
 | `unavailable` | `503` HTML com `Retry-After: 30` | `503 {"error":"auth_unavailable"}` | `503` |
 
-- Timeout de 3 s; cache de até 60 s apenas para `active` e `inactive`. 401/403 da introspection contam como `inactive`; 5xx, 429, rede e timeout, como `unavailable`, sem apagar cookies.
+- Timeout de 3 s; cache de até 15 s apenas para `active` e `inactive`. 401/403 da introspection contam como `inactive`; 5xx, 429, rede e timeout, como `unavailable`, sem apagar cookies.
 - Em `AUTH_MODE=broker`, cookie sem campos broker (`sid`, etc.) conta como `inactive`. Em `hybrid`, sessão por senha (sem `sid`) permanece `active` só com validação de assinatura; sessão com campos broker segue introspeção.
 - O cookie de sessão só é expirado quando a requisição trouxe um.
 - O flag `Secure` dos cookies vem de `resolveCookieSecure` (`src/lib/auth/cookieFlags.ts`): `AUTH_COOKIE_SECURE`, depois `x-forwarded-proto`, depois `NODE_ENV=production` com host não local.

@@ -34,7 +34,7 @@ describe("introspeccao central em tres estados", () => {
   });
 
   it("o padrao do contrato e cache de 60s e timeout de 3s", () => {
-    expect(INTROSPECTION_CACHE_MS).toBe(60_000);
+    expect(INTROSPECTION_CACHE_MS).toBe(15_000);
     expect(INTROSPECTION_TIMEOUT_MS).toBe(3_000);
   });
 
