@@ -79,12 +79,20 @@ function expectAuthErrorRedirect(response: Response, code: string) {
 }
 
 describe("GET /auth/callback erros", () => {
-  it("error do broker vira broker_denied em /auth/error", async () => {
+  it("error recuperavel login_required preserva o codigo", async () => {
+    restores.push(withBrokerEnv("https://broker.example.test"));
+    process.env.AUTH_SECRET = "test-bridge-secret-32-chars-min!!";
+
+    const response = await GET(callbackRequest("?error=login_required"));
+    expectAuthErrorRedirect(response, "login_required");
+  });
+
+  it("error do broker desconhecido vira broker_denied em /auth/error", async () => {
     restores.push(withBrokerEnv("https://broker.example.test"));
     process.env.AUTH_SECRET = "test-bridge-secret-32-chars-min!!";
 
     const response = await GET(
-      callbackRequest("?error=access_denied&error_description=ignored"),
+      callbackRequest("?error=server_error&error_description=ignored"),
     );
     expectAuthErrorRedirect(response, "broker_denied");
   });

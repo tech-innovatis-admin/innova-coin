@@ -7,7 +7,6 @@ export const DEFAULT_AUTH_ERROR_CODE = "callback_failed";
 
 const MESSAGES: Record<string, string> = {
   broker_denied: "O login foi cancelado ou negado no Hub Innovatis.",
-  cognito_denied: "O login foi cancelado ou negado no Cognito.",
   login_required: "Sua sessão no Hub expirou. Entre novamente para continuar.",
   interaction_required: "O Hub precisa de uma nova confirmação de login.",
   access_denied: "O acesso foi negado no Hub Innovatis.",
@@ -15,7 +14,6 @@ const MESSAGES: Record<string, string> = {
   missing_oauth_cookie: "A tentativa de login expirou antes de terminar.",
   invalid_oauth_cookie: "A tentativa de login ficou inválida.",
   state_mismatch: "A validação de segurança do login não conferiu.",
-  platform_forbidden: "Você entrou, mas não tem acesso à plataforma Innova Coin.",
   user_not_linked: "Você entrou, mas não tem acesso à plataforma Innova Coin.",
   [DEFAULT_AUTH_ERROR_CODE]: "Não foi possível concluir o login.",
 };

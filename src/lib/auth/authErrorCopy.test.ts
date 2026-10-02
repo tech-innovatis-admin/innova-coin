@@ -19,7 +19,6 @@ describe("copy da pagina de erro de login", () => {
       "missing_oauth_cookie",
       "invalid_oauth_cookie",
       "state_mismatch",
-      "platform_forbidden",
       "user_not_linked",
       "callback_failed",
     ]) {
