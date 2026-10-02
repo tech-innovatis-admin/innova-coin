@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { brokerEnabled, unauthenticatedLoginPath } from "@/lib/auth/authMode";
+import { brokerEnabled, brokerOnly, unauthenticatedLoginPath } from "@/lib/auth/authMode";
 import {
   readBrokerSessionFromPayload,
   validateBrokerSession,
@@ -83,7 +83,10 @@ export async function evaluateSession(
 
   const brokerSession = readBrokerSessionFromPayload(payload);
   if (!brokerSession) {
-    return { state: "inactive", hadCookie };
+    if (brokerOnly()) {
+      return { state: "inactive", hadCookie };
+    }
+    return { state: "active", hadCookie };
   }
 
   let state: BrokerSessionState;

@@ -259,6 +259,37 @@ describe("validador unico de sessao", () => {
     }
   });
 
+  it("token sem sid em modo hybrid e active, sem introspeccao", async () => {
+    const restore = brokerEnv();
+    process.env.AUTH_MODE = "hybrid";
+    broker.setBehaviour("active");
+    try {
+      const before = broker.calls;
+      const token = await legacySessionToken();
+      const decision = await evaluateSession(request("/admin", { token }));
+      expect(decision.state).toBe("active");
+      expect(decision.hadCookie).toBe(true);
+      expect(broker.calls).toBe(before);
+    } finally {
+      restore();
+    }
+  });
+
+  it("token com sid em modo hybrid passa pela introspeccao", async () => {
+    const restore = brokerEnv();
+    process.env.AUTH_MODE = "hybrid";
+    broker.setBehaviour("inactive");
+    clearIntrospectionCache();
+    try {
+      const { token } = await brokerSessionToken();
+      const decision = await evaluateSession(request("/admin", { token }));
+      expect(decision.state).toBe("inactive");
+      expect(broker.calls).toBeGreaterThan(0);
+    } finally {
+      restore();
+    }
+  });
+
   it("sem token o estado e inactive e nao ha introspeccao", async () => {
     const restore = brokerEnv();
     try {
