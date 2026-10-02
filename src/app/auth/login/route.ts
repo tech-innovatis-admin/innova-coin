@@ -12,13 +12,18 @@ import {
   TRANSACTION_MAX_AGE,
 } from "@/lib/auth/centralOidc";
 import { safeReturnTo } from "@/lib/auth/redirectTarget";
+import { unavailablePageResponse } from "@/lib/auth/sessionGuard";
 import { ADMIN_HOME_PATH, LOGIN_PATH } from "@/lib/platformAccess";
 
-function sessionCookieOptions(maxAge = 0) {
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "UnknownError";
+}
+
+function sessionCookieOptions(request: NextRequest, maxAge = 0) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: cookieSecure(),
+    secure: cookieSecure(request.headers),
     path: "/",
     maxAge,
   };
@@ -54,14 +59,14 @@ export async function GET(request: NextRequest) {
         code_verifier: codeVerifier,
         returnTo,
       }),
-      sessionCookieOptions(TRANSACTION_MAX_AGE),
+      sessionCookieOptions(request, TRANSACTION_MAX_AGE),
     );
     return response;
   } catch (error) {
-    const message =
-      error instanceof CentralOidcConfigError
-        ? error.message
-        : "Falha ao iniciar SSO.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (error instanceof CentralOidcConfigError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    console.error("[auth] broker indisponivel ao iniciar login", errorName(error));
+    return unavailablePageResponse();
   }
 }

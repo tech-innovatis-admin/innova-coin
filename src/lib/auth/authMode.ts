@@ -19,6 +19,10 @@ export function brokerEnabled(mode: AuthMode = getAuthMode()) {
   return mode === 'hybrid' || mode === 'broker';
 }
 
+export function brokerOnly(mode: AuthMode = getAuthMode()) {
+  return mode === 'broker';
+}
+
 export function credentialsEnabled(mode: AuthMode = getAuthMode()) {
   return mode === 'legacy' || mode === 'hybrid';
 }

@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { brokerEnabled } from "@/lib/auth/authMode";
-import { validateBrokerSession } from "@/lib/auth/brokerIntrospection";
+import { guardRequest, isApiRequest } from "@/lib/auth/sessionGuard";
+import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 import { getDbPool } from "@/lib/db";
 import { getRedirectTargetForPathname } from "@/lib/platformAccess";
 import {
@@ -22,56 +23,35 @@ type ProxyPasswordStateRow = {
   must_change_password: boolean | null;
 };
 
-function isLocalHost(host: string) {
-  const trimmedHost = host.trim().toLowerCase();
-  const hostname = trimmedHost.startsWith("[")
-    ? trimmedHost.slice(1, Math.max(trimmedHost.indexOf("]"), 1))
-    : trimmedHost.split(":")[0] ?? "";
+/** Defesa em profundidade; o matcher ja exclui as mesmas rotas. */
+const PUBLIC_AUTH_API = /^\/api\/auth\/(?:login|mode|logout)(?:\/|$)/;
 
-  if (!hostname) {
+export const PUBLIC_PROXY_PATHS = new Set([
+  "/",
+  "/login",
+  "/auth/login",
+  "/auth/logout",
+  "/auth/callback",
+  "/auth/error",
+]);
+
+export function isPublicProxyPath(pathname: string): boolean {
+  return PUBLIC_PROXY_PATHS.has(pathname);
+}
+
+function isPublicAuthApi(pathname: string): boolean {
+  return PUBLIC_AUTH_API.test(pathname);
+}
+
+function shouldGuardPath(pathname: string, api: boolean): boolean {
+  if (api && isPublicAuthApi(pathname)) {
     return false;
   }
-
-  if (hostname === "localhost" || hostname === "::1" || hostname.endsWith(".local")) {
-    return true;
-  }
-
-  return (
-    hostname === "0.0.0.0" ||
-    hostname.startsWith("127.") ||
-    hostname.startsWith("10.") ||
-    hostname.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
-  );
+  return !isPublicProxyPath(pathname);
 }
 
 function shouldUseSecureCookie(request: NextRequest) {
-  const configuredValue = process.env["AUTH_COOKIE_SECURE"]?.trim().toLowerCase();
-
-  if (configuredValue === "true") {
-    return true;
-  }
-
-  if (configuredValue === "false") {
-    return false;
-  }
-
-  const forwardedProto = request.headers
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim()
-    .toLowerCase();
-  const host =
-    request.headers.get("x-forwarded-host")?.trim() ||
-    request.headers.get("host")?.trim() ||
-    request.nextUrl.host ||
-    "";
-
-  if (forwardedProto) {
-    return forwardedProto === "https";
-  }
-
-  return process.env.NODE_ENV === "production" && host !== "" && !isLocalHost(host);
+  return resolveCookieSecure(request.headers);
 }
 
 function attachSessionCookie(
@@ -135,22 +115,6 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
   }
 
   try {
-    if (brokerEnabled()) {
-      const brokerSession = await readBrokerFieldsFromToken(token);
-      if (brokerSession) {
-        const active = await validateBrokerSession({
-          ...brokerSession,
-          auth: "broker",
-        });
-        if (!active) {
-          return {
-            user: null,
-            refreshedToken: null,
-          };
-        }
-      }
-    }
-
     const sessionState = await readSessionUserStateFromToken(token);
     const brokerFields = await readBrokerFieldsFromToken(token);
 
@@ -192,14 +156,39 @@ async function readProxySessionUser(request: NextRequest): Promise<ProxySessionU
   }
 }
 
+function applySessionCookieSideEffects(
+  response: NextResponse,
+  request: NextRequest,
+  sessionState: ProxySessionUserState,
+) {
+  if (sessionState.refreshedToken) {
+    attachSessionCookie(response, request, sessionState.refreshedToken);
+  } else if (!sessionState.user && request.cookies.get(SESSION_COOKIE_NAME)?.value) {
+    clearSessionCookie(response, request);
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const api = isApiRequest(pathname);
 
-  if (pathname === "/auth/login" || pathname.startsWith("/auth/")) {
+  if (!brokerEnabled()) {
+    if (api) {
+      return NextResponse.next();
+    }
+  } else if (shouldGuardPath(pathname, api)) {
+    const guarded = await guardRequest(request);
+    if (guarded) {
+      return guarded;
+    }
+  }
+
+  if (api || (pathname.startsWith("/auth/") && isPublicProxyPath(pathname))) {
     return NextResponse.next();
   }
 
   const sessionState = await readProxySessionUser(request);
+
   const redirectTo = getRedirectTargetForPathname(sessionState.user, pathname);
 
   const response =
@@ -207,15 +196,13 @@ export async function proxy(request: NextRequest) {
       ? NextResponse.redirect(new URL(redirectTo, request.url))
       : NextResponse.next();
 
-  if (sessionState.refreshedToken) {
-    attachSessionCookie(response, request, sessionState.refreshedToken);
-  } else if (!sessionState.user && request.cookies.get(SESSION_COOKIE_NAME)?.value) {
-    clearSessionCookie(response, request);
-  }
+  applySessionCookieSideEffects(response, request, sessionState);
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\..*$).*)"],
+  matcher: [
+    "/((?!api/auth/(?:login|mode|logout)(?:/|$)|_next/static|_next/image|(?!api/).*\\..*$).*)",
+  ],
 };

@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
+
 import {
   changeUserPassword,
   getSessionUser,
   setSessionCookie,
 } from "@/lib/auth";
+import { readBrokerFieldsFromToken, SESSION_COOKIE_NAME } from "@/lib/sessionToken";
 import { jsonNoStore } from "../../auth/_lib/http";
 
 type PasswordChangeRequestBody = {
@@ -72,7 +75,12 @@ export async function POST(request: Request) {
       user: result.user,
     });
 
-    await setSessionCookie(response, result.user);
+    const cookieStore = await cookies();
+    const currentToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const brokerFields = currentToken
+      ? await readBrokerFieldsFromToken(currentToken)
+      : null;
+    await setSessionCookie(response, result.user, brokerFields ?? undefined);
 
     return response;
   } catch (error) {

@@ -4,6 +4,7 @@ import { EncryptJWT, jwtDecrypt } from "jose";
 import * as client from "openid-client";
 
 import { TRANSACTION_COOKIE as TRANSACTION_COOKIE_NAME } from "@/lib/auth/config";
+import { resolveCookieSecure } from "@/lib/auth/cookieFlags";
 
 export class CentralOidcConfigError extends Error {
   constructor(message: string) {
@@ -104,11 +105,16 @@ function encryptionKey(): Uint8Array {
   return createHash("sha256").update(secret).digest();
 }
 
-function discoveryOptions(issuer: string): client.DiscoveryRequestOptions | undefined {
+export const DISCOVERY_TIMEOUT_SECONDS = 3;
+
+function discoveryOptions(issuer: string): client.DiscoveryRequestOptions {
   if (!issuer.startsWith("http://")) {
-    return undefined;
+    return { timeout: DISCOVERY_TIMEOUT_SECONDS };
   }
-  return { execute: [client.allowInsecureRequests] };
+  return {
+    timeout: DISCOVERY_TIMEOUT_SECONDS,
+    execute: [client.allowInsecureRequests],
+  };
 }
 
 export async function getOidcConfiguration(): Promise<client.Configuration> {
@@ -127,6 +133,8 @@ export async function getOidcConfiguration(): Promise<client.Configuration> {
   if (cfg.issuer.startsWith("http://")) {
     client.allowInsecureRequests(cachedConfig);
   }
+  // Discovery timeout must not apply to token exchange and other OIDC calls.
+  cachedConfig.timeout = undefined;
   cachedIssuer = cfg.issuer;
   return cachedConfig;
 }
@@ -297,22 +305,8 @@ export async function exchangeCentralCallback(input: {
   }
 }
 
-export function buildCentralLogoutUrl(postLogoutRedirectUri?: string) {
-  const cfg = getCentralOidcConfig();
-  const params = new URLSearchParams({
-    client_id: cfg.clientId,
-    post_logout_redirect_uri: postLogoutRedirectUri || cfg.logoutUri,
-  });
-  return `${cfg.issuer}/oidc/logout?${params.toString()}`;
-}
-
-export function cookieSecure() {
-  const flag = env("AUTH_COOKIE_SECURE")?.toLowerCase();
-  if (flag === "true") return true;
-  if (flag === "false") return false;
-  const origin = env("APP_URL") || "";
-  if (origin.startsWith("https://")) return true;
-  return env("NODE_ENV") === "production";
+export function cookieSecure(headers: Headers) {
+  return resolveCookieSecure(headers);
 }
 
 const BIND_HOSTS = new Set(["0.0.0.0", "::", "[::]"]);

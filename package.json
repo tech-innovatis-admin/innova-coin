@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:unit": "node --experimental-strip-types --test ./src/lib/auth/*.test.mts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@types/pg": "^8.20.0",
