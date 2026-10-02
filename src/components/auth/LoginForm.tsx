@@ -22,17 +22,6 @@ type AuthModeResponse = {
   sso: boolean;
 };
 
-const SSO_ERROR_MESSAGES: Record<string, string> = {
-  broker_denied: "Login SSO cancelado ou negado.",
-  cognito_denied: "Login SSO cancelado ou negado.",
-  missing_code: "Resposta SSO incompleta. Tente novamente.",
-  missing_oauth_cookie: "Sessão SSO expirou. Inicie o login de novo.",
-  invalid_oauth_cookie: "Sessão SSO inválida. Tente novamente.",
-  state_mismatch: "Falha de segurança no SSO (state). Tente novamente.",
-  user_not_linked: "Usuário sem acesso ao Innova Coin ou não vinculado.",
-  callback_failed: "Falha ao concluir o SSO. Tente novamente.",
-};
-
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
@@ -41,19 +30,6 @@ export default function LoginForm() {
   const [showSso, setShowSso] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ssoError = params.get("sso_error");
-    if (ssoError) {
-      setError(SSO_ERROR_MESSAGES[ssoError] || `Erro SSO: ${ssoError}`);
-      params.delete("sso_error");
-      const next = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${next ? `?${next}` : ""}`,
-      );
-    }
-
     let cancelled = false;
     (async () => {
       try {
